@@ -66,7 +66,7 @@ ${productContext}
     const firstUserIdx = rawHistory.findIndex((m) => m.role === 'user')
     const history = firstUserIdx >= 0 ? rawHistory.slice(firstUserIdx) : []
 
-    const chat = model.startChat({ history, systemInstruction: systemPrompt })
+    const chat = model.startChat({ history, systemInstruction: { parts: [{ text: systemPrompt }] } })
 
     const lastMessage = messages[messages.length - 1]
     const result = await chat.sendMessage(lastMessage.content)
