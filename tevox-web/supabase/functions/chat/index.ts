@@ -91,9 +91,10 @@ ${productContext}
       { headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }
     )
   } catch (err) {
-    console.error('chat function error:', err)
+    const msg = err instanceof Error ? err.message : String(err)
+    console.error('chat function error:', msg)
     return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
+      JSON.stringify({ error: msg }),
       { status: 500, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }
     )
   }
