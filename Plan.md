@@ -100,44 +100,23 @@
 
 ---
 
-## Phase 4 — AI Features
+## Phase 4 — AI Features ✅
 
 ### 4.1 Chatbot
-- [ ] `src/components/Chatbot.jsx`  
-  - Floating `💬 คุยกับเรา` button, bottom-right, always visible
-  - Slide-in chat panel: 380px wide, full-height on mobile
-  - Dark theme, message bubbles (user: yellow right, bot: white/dark left)
-  - Opening message shown immediately on mount
-  - After first substantive reply: ask for Line ID
-  - On submit: POST to `/functions/v1/chat` with `Authorization: Bearer {VITE_SUPABASE_PUBLISHABLE_KEY}`
-
-- [ ] `supabase/functions/chat/index.ts`  
-  - Fetch live product list from Supabase
-  - Inject into system prompt (Thai, friend-like tone, no superlatives)
-  - Call Gemini via `@google/generative-ai` (`gemini-2.0-flash`)
-  - Parse `{"action": "capture_lead", ...}` response → insert to `leads` table
-  - Return `{ reply: string }`
+- [x] `src/components/Chatbot.jsx` — floating 💬 button, slide-in panel, dark theme, bubbles, typing indicator, error handling
+- [x] `supabase/functions/chat/index.ts` — Gemini `gemini-2.0-flash`, live product context, lead capture JSON action, CORS headers
 
 ### 4.2 Fitment Checker
-- [ ] `src/components/FitmentChecker.jsx`  
-  - Embedded on ProductDetail page
-  - Fields: รุ่นรถ, ปีที่ผลิต, สเปคเพิ่มเติม (optional)
-  - Result: ✅ / ❌ / ⚠️ badge + explanation
-  - If compatible: Line CTA
-  - If not: `[แจ้งเตือน]` → insert to `leads` table
-
-- [ ] `supabase/functions/fitment/index.ts`  
-  - Fetch product by ID from Supabase
-  - Ask Gemini (`gemini-2.0-flash`) for JSON verdict: `{ compatible, verdict_th, explanation_th, caveats_th }`
-  - Handle JSON parse failure gracefully (return "unknown" with contact-via-Line message)
+- [x] `src/components/FitmentChecker.jsx` — ✅/❌/⚠️ verdict display, Line CTA if compatible, embedded in ProductDetail
+- [x] `supabase/functions/fitment/index.ts` — Gemini JSON verdict, markdown fence stripping, graceful fallback
 
 ---
 
-## Phase 5 — Routing & App Shell
+## Phase 5 — Routing & App Shell ✅
 
-- [x] **5.1** `src/App.jsx` — `BrowserRouter` with all 5 routes: `/`, `/products`, `/products/:id`, `/gallery`, `/about`
-- [x] **5.2** Navbar + Footer wrapping all routes; `chatOpen` state managed at App level
-- [ ] **5.3** Mount `Chatbot` component at App level (pending Phase 4.1)
+- [x] **5.1** `src/App.jsx` — `BrowserRouter` with all 5 routes
+- [x] **5.2** Navbar + Footer wrapping all routes
+- [x] **5.3** `Chatbot` mounted at App level, `isOpen`/`onClose` wired to `chatOpen` state
 
 ---
 
@@ -167,10 +146,10 @@ Individual files in `supabase/migrations/` for reference.
   supabase functions deploy chat
   supabase functions deploy fitment
   ```
-- [ ] **7.3** Deploy frontend to Cloudflare Pages:
-  - Build command: `npm run build`
-  - Output directory: `dist`
-  - Set env vars: `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_R2_PUBLIC_URL`
+- [ ] **7.3** Deploy frontend to Vercel:
+  - `vercel.json` already configured (build, output dir, SPA rewrites)
+  - Run: `cd tevox-web && vercel --prod`
+  - Set env vars in Vercel dashboard: `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_R2_PUBLIC_URL`
 
 ---
 

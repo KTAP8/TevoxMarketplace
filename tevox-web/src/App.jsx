@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Navbar from './components/layout/Navbar'
 import Footer from './components/layout/Footer'
+import Chatbot from './components/Chatbot'
 import Home from './pages/Home'
 import Products from './pages/Products'
 import ProductDetail from './pages/ProductDetail'
@@ -10,7 +11,8 @@ import About from './pages/About'
 
 export default function App() {
   const [chatOpen, setChatOpen] = useState(false)
-  const openChat = () => setChatOpen(true)
+  const openChat  = () => setChatOpen(true)
+  const closeChat = () => setChatOpen(false)
 
   return (
     <BrowserRouter>
@@ -26,6 +28,7 @@ export default function App() {
           </Routes>
         </main>
         <Footer />
+        <Chatbot isOpen={chatOpen} onClose={closeChat} />
       </div>
     </BrowserRouter>
   )
