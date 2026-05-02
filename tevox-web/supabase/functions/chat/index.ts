@@ -59,10 +59,12 @@ ${productContext}
 
     const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
 
-    const history = messages.slice(0, -1).map((m: { role: string; content: string }) => ({
+    const rawHistory = messages.slice(0, -1).map((m: { role: string; content: string }) => ({
       role: m.role === 'user' ? 'user' : 'model',
       parts: [{ text: m.content }],
     }))
+    const firstUserIdx = rawHistory.findIndex((m) => m.role === 'user')
+    const history = firstUserIdx >= 0 ? rawHistory.slice(firstUserIdx) : []
 
     const chat = model.startChat({ history, systemInstruction: systemPrompt })
 
