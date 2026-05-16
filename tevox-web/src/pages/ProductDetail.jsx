@@ -3,10 +3,9 @@ import { useParams, Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { r2Url } from '../lib/r2'
 import { useInstalls } from '../hooks/useInstalls'
+import { useSettings } from '../hooks/useSettings'
 import Badge from '../components/ui/Badge'
 import Button from '../components/ui/Button'
-
-const LINE_OA_ID = 'tevoxauto'
 
 const SPEC_LABELS = {
   material:      'วัสดุ',
@@ -107,6 +106,7 @@ export default function ProductDetail() {
   const [loading, setLoading] = useState(true)
   const countdown = useCountdown(product?.preorder_closes_at)
   const { installs } = useInstalls({ product_id: id, limit: 4 })
+  const { settings } = useSettings()
 
   useEffect(() => {
     supabase.from('products').select('*').eq('id', id).single()
@@ -156,12 +156,17 @@ export default function ProductDetail() {
             {/* Name */}
             <h1 className="text-h2 font-black text-brand-dark leading-snug">{product.name_th}</h1>
 
-            {/* Price + countdown */}
-            <div className="flex items-baseline gap-4">
+            {/* Price + countdown + stock */}
+            <div className="flex items-baseline gap-4 flex-wrap">
               <span className="font-mono font-bold text-display text-brand-dark tabular-nums">฿{price}</span>
               {countdown && product.status === 'preorder' && (
                 <span className="font-mono text-micro text-zinc-400 tracking-wider">
                   ปิดรับใน {countdown.days}ว {countdown.hours}ชม
+                </span>
+              )}
+              {product.status === 'available' && product.stock_qty != null && (
+                <span className={`font-mono text-micro tracking-wider ${product.stock_qty <= 3 ? 'text-red-500 font-bold' : 'text-zinc-400'}`}>
+                  เหลือ {product.stock_qty} ชิ้น
                 </span>
               )}
             </div>
@@ -194,9 +199,9 @@ export default function ProductDetail() {
 
             {/* CTA */}
             <div className="flex gap-3 pt-2">
-              {product.status !== 'coming_soon' && product.status !== 'sold_out' && (
-                <a href={`https://line.me/ti/p/~${LINE_OA_ID}`} target="_blank" rel="noopener noreferrer" className="flex-1">
-                  <Button variant="primary" size="lg" className="w-full">สั่งซื้อผ่าน Line</Button>
+              {product.status !== 'coming_soon' && product.status !== 'sold_out' && settings.messenger_url && (
+                <a href={settings.messenger_url} target="_blank" rel="noopener noreferrer" className="flex-1">
+                  <Button variant="primary" size="lg" className="w-full">สั่งซื้อผ่าน Messenger</Button>
                 </a>
               )}
               {product.status === 'coming_soon' && (

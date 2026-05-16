@@ -23,7 +23,7 @@ function useCountdown(closesAt) {
 }
 
 export default function ProductCard({ product }) {
-  const { id, sku, name_th, price_thb, status, image_keys, preorder_closes_at } = product
+  const { id, sku, name_th, price_thb, status, image_keys, preorder_closes_at, stock_qty } = product
   const imageUrl  = r2Url(image_keys?.[0])
   const countdown = useCountdown(preorder_closes_at)
   const price     = Number(price_thb).toLocaleString('th-TH', { minimumFractionDigits: 0 })
@@ -61,6 +61,11 @@ export default function ProductCard({ product }) {
             {countdown && status === 'preorder' && (
               <span className="font-mono text-micro text-zinc-400 tabular-nums">
                 ปิดใน {countdown.days}ว {countdown.hours}ชม
+              </span>
+            )}
+            {status === 'available' && stock_qty != null && (
+              <span className={`font-mono text-micro tabular-nums ${stock_qty <= 3 ? 'text-red-500' : 'text-zinc-400'}`}>
+                เหลือ {stock_qty} ชิ้น
               </span>
             )}
           </div>

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
+import { useSettings } from '../hooks/useSettings'
 
 const OPENING_MESSAGE = {
   role: 'assistant',
@@ -61,6 +62,7 @@ export default function Chatbot({ isOpen, onClose }) {
   const [loading, setLoading]   = useState(false)
   const bottomRef               = useRef(null)
   const inputRef                = useRef(null)
+  const { settings }            = useSettings()
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -87,7 +89,7 @@ export default function Chatbot({ isOpen, onClose }) {
     } catch {
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: 'ขออภัยครับ เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง หรือติดต่อเราผ่าน Line โดยตรงครับ',
+        content: 'ขออภัยครับ เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง หรือติดต่อเราผ่าน Facebook Messenger โดยตรงครับ',
       }])
     } finally {
       setLoading(false)
@@ -145,6 +147,20 @@ export default function Chatbot({ isOpen, onClose }) {
               {loading && <TypingIndicator />}
               <div ref={bottomRef} />
             </div>
+
+            {/* Messenger shortcut */}
+            {settings.messenger_url && (
+              <div className="px-4 pb-2 shrink-0">
+                <a
+                  href={settings.messenger_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-mono text-micro text-zinc-600 hover:text-brand-yellow transition-colors tracking-wider"
+                >
+                  → สั่งซื้อผ่าน Messenger
+                </a>
+              </div>
+            )}
 
             {/* Input */}
             <div className="border-t border-zinc-800 p-3 flex gap-2 shrink-0">

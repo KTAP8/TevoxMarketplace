@@ -42,6 +42,7 @@ function FilterChip({ label, active, onClick }) {
 export default function Products() {
   const [carModel,  setCarModel]  = useState('')
   const [category,  setCategory]  = useState('')
+  const [open,      setOpen]      = useState(false)
   const { carModels, categories } = useFilterOptions()
   const { products, loading }     = useProducts({
     car_model: carModel  || undefined,
@@ -65,49 +66,66 @@ export default function Products() {
       <div className="max-w-7xl mx-auto px-6 py-10 flex flex-col gap-8">
 
         {/* Filter panel */}
-        <div className="bg-white border border-zinc-200 p-5 flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <p className="font-mono text-micro text-zinc-400 tracking-[0.12em] uppercase">FILTER</p>
-            {hasFilter && (
-              <button
-                onClick={() => { setCarModel(''); setCategory('') }}
-                className="font-mono text-micro text-zinc-400 hover:text-brand-dark tracking-wider uppercase transition-colors"
-              >
-                ล้างทั้งหมด ×
-              </button>
-            )}
-          </div>
+        <div className="bg-white border border-zinc-200">
+          <button
+            onClick={() => setOpen(o => !o)}
+            className="w-full flex items-center justify-between px-5 py-4 hover:bg-zinc-50 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <p className="font-mono text-micro text-zinc-400 tracking-[0.12em] uppercase">FILTER</p>
+              {hasFilter && (
+                <span className="font-mono text-micro bg-brand-yellow text-brand-dark px-2 py-0.5">
+                  {[carModel, category].filter(Boolean).length} active
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-4">
+              {hasFilter && (
+                <button
+                  onClick={e => { e.stopPropagation(); setCarModel(''); setCategory('') }}
+                  className="font-mono text-micro text-zinc-400 hover:text-brand-dark tracking-wider uppercase transition-colors"
+                >
+                  ล้างทั้งหมด ×
+                </button>
+              )}
+              <span className="font-mono text-micro text-zinc-400">{open ? '▲' : '▼'}</span>
+            </div>
+          </button>
 
-          {carModels.length > 0 && (
-            <div className="flex flex-col gap-2">
-              <p className="font-mono text-micro text-zinc-400 tracking-wider uppercase">รุ่นรถ</p>
-              <div className="flex flex-wrap gap-2">
-                <FilterChip label="ทุกรุ่น" active={!carModel} onClick={() => setCarModel('')} />
-                {carModels.map(m => (
-                  <FilterChip key={m} label={m} active={carModel === m} onClick={() => setCarModel(m)} />
-                ))}
-              </div>
+          {open && (
+            <div className="px-5 pb-5 flex flex-col gap-4 border-t border-zinc-100">
+              {carModels.length > 0 && (
+                <div className="flex flex-col gap-2 pt-4">
+                  <p className="font-mono text-micro text-zinc-400 tracking-wider uppercase">รุ่นรถ</p>
+                  <div className="flex flex-wrap gap-2">
+                    <FilterChip label="ทุกรุ่น" active={!carModel} onClick={() => setCarModel('')} />
+                    {carModels.map(m => (
+                      <FilterChip key={m} label={m} active={carModel === m} onClick={() => setCarModel(m)} />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {categories.length > 0 && (
+                <div className="flex flex-col gap-2">
+                  <p className="font-mono text-micro text-zinc-400 tracking-wider uppercase">หมวดหมู่</p>
+                  <div className="flex flex-wrap gap-2">
+                    <FilterChip label="ทุกหมวด" active={!category} onClick={() => setCategory('')} />
+                    {categories.map(c => (
+                      <FilterChip
+                        key={c}
+                        label={CATEGORY_LABELS[c] ?? c}
+                        active={category === c}
+                        onClick={() => setCategory(c)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
-          {categories.length > 0 && (
-            <div className="flex flex-col gap-2">
-              <p className="font-mono text-micro text-zinc-400 tracking-wider uppercase">หมวดหมู่</p>
-              <div className="flex flex-wrap gap-2">
-                <FilterChip label="ทุกหมวด" active={!category} onClick={() => setCategory('')} />
-                {categories.map(c => (
-                  <FilterChip
-                    key={c}
-                    label={CATEGORY_LABELS[c] ?? c}
-                    active={category === c}
-                    onClick={() => setCategory(c)}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="border-t border-zinc-100 pt-3">
+          <div className="px-5 py-3 border-t border-zinc-100">
             <p className="font-mono text-micro text-zinc-400 tabular-nums">
               {loading ? '...' : `${products.length} รายการ`}
             </p>

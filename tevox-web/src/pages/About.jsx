@@ -1,10 +1,11 @@
 import { Link } from 'react-router-dom'
 import Button from '../components/ui/Button'
+import { useSettings } from '../hooks/useSettings'
 
 const steps = [
   { step: '01', title: 'ซื้อตรงจากโรงงานจีน', desc: 'คัดเลือกผู้ผลิตที่เชื่อถือได้ในจีน เจรจาตรง ไม่ผ่านคนกลาง' },
   { step: '02', title: 'ตรวจสอบคุณภาพ', desc: 'ทดสอบการติดตั้งจริงบน MG IM6 ของผู้ก่อตั้งก่อนทุกครั้ง' },
-  { step: '03', title: 'จัดส่งในไทย', desc: 'พร้อมคู่มือติดตั้งภาษาไทย และ support ตลอดผ่าน Line OA' },
+  { step: '03', title: 'จัดส่งในไทย', desc: 'พร้อมคู่มือติดตั้งภาษาไทย และ support ตลอดผ่าน Facebook Messenger' },
 ]
 
 const values = [
@@ -14,6 +15,14 @@ const values = [
 ]
 
 export default function About() {
+  const { settings } = useSettings()
+
+  const socialLinks = [
+    settings.tiktok_url    && { href: settings.tiktok_url,    label: 'TikTok' },
+    settings.facebook_url  && { href: settings.facebook_url,  label: 'Facebook' },
+    settings.messenger_url && { href: settings.messenger_url, label: 'Messenger', primary: true },
+  ].filter(Boolean)
+
   return (
     <div className="flex flex-col">
 
@@ -44,9 +53,11 @@ export default function About() {
             </div>
             <div className="flex gap-3 mt-8">
               <Link to="/products"><Button variant="primary">ดูสินค้า</Button></Link>
-              <a href="https://line.me/ti/p/~tevoxauto" target="_blank" rel="noopener noreferrer">
-                <Button variant="secondary">ติดต่อเรา</Button>
-              </a>
+              {settings.messenger_url && (
+                <a href={settings.messenger_url} target="_blank" rel="noopener noreferrer">
+                  <Button variant="secondary">ติดต่อเรา</Button>
+                </a>
+              )}
             </div>
           </div>
           <div className="hidden md:block relative">
@@ -111,11 +122,7 @@ export default function About() {
             <p className="text-zinc-500 text-body">อัปเดตสินค้าใหม่ รีวิว และเทคนิคการแต่งรถ EV</p>
           </div>
           <div className="flex flex-wrap gap-3">
-            {[
-              { href: 'https://tiktok.com/@tevoxauto',   label: 'TikTok' },
-              { href: 'https://facebook.com/tevoxauto',  label: 'Facebook' },
-              { href: 'https://line.me/ti/p/~tevoxauto', label: 'Line OA', primary: true },
-            ].map(({ href, label, primary }) => (
+            {socialLinks.map(({ href, label, primary }) => (
               <a key={label} href={href} target="_blank" rel="noopener noreferrer">
                 <Button variant={primary ? 'primary' : 'secondary'}>{label}</Button>
               </a>
