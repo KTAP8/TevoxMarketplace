@@ -1,5 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
-import { GoogleGenerativeAI } from 'npm:@google/generative-ai'
+import OpenAI from 'npm:openai'
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin':  '*',
@@ -7,7 +7,11 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Headers': 'authorization, content-type, x-client-info, apikey',
 }
 
-const genAI    = new GoogleGenerativeAI(Deno.env.get('GEMINI_API_KEY')!)
+const groq = new OpenAI({
+  apiKey:  Deno.env.get('GROQ_API_KEY')!,
+  baseURL: 'https://api.groq.com/openai/v1',
+})
+
 const supabase = createClient(
   Deno.env.get('SUPABASE_URL')!,
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
@@ -33,44 +37,44 @@ Deno.serve(async (req) => {
       .select('sku, name_th, car_model, category, price_thb, status, fitment_notes_th')
       .neq('status', 'coming_soon')
 
-    const productContext = products?.map(p =>
+    const productContext = products?.map((p: { sku: string; name_th: string; car_model: string; price_thb: number; status: string }) =>
       `- ${p.sku}: ${p.name_th} (${p.car_model}) ราคา ฿${p.price_thb} [${p.status}]`
     ).join('\n') ?? 'ยังไม่มีสินค้าในระบบ'
 
-    const systemPrompt = `
-คุณคือผู้ช่วยของ Tevox Automotive ร้านอะไหล่แต่งรถ EV ในไทย
-ก่อตั้งโดยเจ้าของ MG IM6 ที่อยากให้คนไทยมีอะไหล่ EV เหมือน JDM และ Euro
+    const systemPrompt = [
+      'คุณคือผู้ช่วยของ Tevox Automotive ร้านอะไหล่แต่งรถ EV ในไทย',
+      'ก่อตั้งโดยเจ้าของ MG IM6 ที่อยากให้คนไทยมีอะไหล่ EV เหมือน JDM และ Euro',
+      '',
+      'กฎในการตอบ:',
+      '- ตอบเป็นภาษาไทยเสมอ ยกเว้น SKU หรือชื่อรุ่นรถ',
+      '- พูดตรงๆ เหมือนเพื่อนที่รู้เรื่องรถ ไม่ใช่พนักงานขาย',
+      '- ถามรุ่นรถของลูกค้าก่อนเสมอก่อนแนะนำสินค้า',
+      '- ถ้าไม่มีสินค้าสำหรับรุ่นนั้น บอกตรงๆ และเสนอให้ลงทะเบียนรอ',
+      '- ถ้าถามเรื่องราคา บอกราคาตรงๆ ไม่ต้องพูดอ้อม',
+      '- ห้ามพูดว่า ดีที่สุด ระดับโลก หรือ ปฏิวัติ',
+      '- เมื่อลูกค้าสนใจสินค้า ขอ Line ID เพื่อแจ้งเตือน',
+      '',
+      'สินค้าที่มีอยู่ตอนนี้:',
+      productContext,
+      '',
+      'ถ้าลูกค้าแจ้ง Line ID ให้ตอบ JSON พิเศษนี้แทนข้อความปกติ (ไม่มีข้อความอื่น):',
+      '{"action":"capture_lead","line_id":"...","car_model":"...","interest":"..."}',
+    ].join('\n')
 
-กฎในการตอบ:
-- ตอบเป็นภาษาไทยเสมอ ยกเว้น SKU หรือชื่อรุ่นรถ
-- พูดตรงๆ เหมือนเพื่อนที่รู้เรื่องรถ ไม่ใช่พนักงานขาย
-- ถามรุ่นรถของลูกค้าก่อนเสมอก่อนแนะนำสินค้า
-- ถ้าไม่มีสินค้าสำหรับรุ่นนั้น บอกตรงๆ และเสนอให้ลงทะเบียนรอ
-- ถ้าถามเรื่องราคา บอกราคาตรงๆ ไม่ต้องพูดอ้อม
-- ห้ามพูดว่า "ดีที่สุด" "ระดับโลก" หรือ "ปฏิวัติ"
-- เมื่อลูกค้าสนใจสินค้า ขอ Line ID เพื่อแจ้งเตือน
+    const groqMessages = [
+      { role: 'system' as const, content: systemPrompt },
+      ...messages.map((m: { role: string; content: string }) => ({
+        role: m.role === 'assistant' ? 'assistant' as const : 'user' as const,
+        content: m.content,
+      })),
+    ]
 
-สินค้าที่มีอยู่ตอนนี้:
-${productContext}
+    const completion = await groq.chat.completions.create({
+      model:    'llama-3.3-70b-versatile',
+      messages: groqMessages,
+    })
 
-ถ้าลูกค้าแจ้ง Line ID ให้ตอบ JSON พิเศษนี้แทนข้อความปกติ (ไม่มีข้อความอื่น):
-{"action":"capture_lead","line_id":"...","car_model":"...","interest":"..."}
-`.trim()
-
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
-
-    const rawHistory = messages.slice(0, -1).map((m: { role: string; content: string }) => ({
-      role: m.role === 'user' ? 'user' : 'model',
-      parts: [{ text: m.content }],
-    }))
-    const firstUserIdx = rawHistory.findIndex((m) => m.role === 'user')
-    const history = firstUserIdx >= 0 ? rawHistory.slice(firstUserIdx) : []
-
-    const chat = model.startChat({ history, systemInstruction: { parts: [{ text: systemPrompt }] } })
-
-    const lastMessage = messages[messages.length - 1]
-    const result = await chat.sendMessage(lastMessage.content)
-    const content = result.response.text()
+    const content = completion.choices[0].message.content ?? ''
 
     try {
       const parsed = JSON.parse(content)
@@ -82,11 +86,11 @@ ${productContext}
           source:    'chatbot',
         })
         return new Response(
-          JSON.stringify({ reply: `บันทึก Line ID แล้วครับ! จะแจ้งเตือนทันทีที่มีสินค้าสำหรับ ${parsed.car_model} ครับ 👍` }),
+          JSON.stringify({ reply: 'บันทึก Line ID แล้วครับ! จะแจ้งเตือนทันทีที่มีสินค้าให้คร้บ' }),
           { headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }
         )
       }
-    } catch { /* not a JSON action — normal reply */ }
+    } catch { /* not a JSON action */ }
 
     return new Response(
       JSON.stringify({ reply: content }),
