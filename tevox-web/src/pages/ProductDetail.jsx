@@ -5,7 +5,6 @@ import { r2Url } from '../lib/r2'
 import { useInstalls } from '../hooks/useInstalls'
 import Badge from '../components/ui/Badge'
 import Button from '../components/ui/Button'
-import FitmentChecker from '../components/FitmentChecker'
 
 const LINE_OA_ID = 'tevoxauto'
 
@@ -192,9 +191,6 @@ export default function ProductDetail() {
                 <p className="text-body text-zinc-500 leading-relaxed">{product.install_notes_th}</p>
               </div>
             )}
-
-            {/* Fitment checker */}
-            <FitmentChecker productId={product.id} />
 
             {/* CTA */}
             <div className="flex gap-3 pt-2">
