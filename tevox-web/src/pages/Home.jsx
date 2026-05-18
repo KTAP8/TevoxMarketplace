@@ -78,7 +78,7 @@ function WaitlistModal({ onClose }) {
               <div>
                 <p className="font-mono text-micro text-zinc-400 tracking-[0.15em] uppercase mb-1">WAITLIST</p>
                 <h2 className="text-brand-dark font-bold text-h3">แจ้งเตือนสินค้าใหม่</h2>
-                <p className="text-zinc-500 text-caption mt-1">เราจะแจ้งทันทีเมื่อมีสินค้าสำหรับรถคุณ</p>
+                <p className="text-zinc-500 text-caption mt-1">แจ้งรุ่นรถของคุณ — เราจะพัฒนาสินค้าให้ตรงกับความต้องการ</p>
               </div>
               <button onClick={onClose} className="text-zinc-400 hover:text-brand-dark leading-none p-1 text-h3">×</button>
             </div>
@@ -92,10 +92,20 @@ function WaitlistModal({ onClose }) {
                 <input type="text" value={form.line_id} onChange={e => setForm(f => ({ ...f, line_id: e.target.value }))} placeholder="@yourlineid" required className={inputClass} />
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className="font-mono text-micro text-zinc-500 tracking-wider uppercase">รุ่นรถ <span className="text-brand-dark">*</span></label>
-                <select value={form.car_model} onChange={e => setForm(f => ({ ...f, car_model: e.target.value }))} required className={inputClass}>
-                  {carModels.map(m => <option key={m} value={m}>{m}</option>)}
-                </select>
+                <label className="font-mono text-micro text-zinc-500 tracking-wider uppercase">รุ่นรถของคุณ <span className="text-brand-dark">*</span></label>
+                <input
+                  type="text"
+                  list="wl-car-models"
+                  value={form.car_model}
+                  onChange={e => setForm(f => ({ ...f, car_model: e.target.value }))}
+                  placeholder="เช่น MG IM6, BYD Seal, Tesla Model 3..."
+                  required
+                  className={inputClass}
+                />
+                <datalist id="wl-car-models">
+                  {carModels.map(m => <option key={m} value={m} />)}
+                </datalist>
+                <p className="font-mono text-micro text-zinc-400 tracking-wider">พิมพ์รุ่นที่ต้องการ แม้ยังไม่มีในรายการ</p>
               </div>
               <Button type="submit" variant="primary" className="w-full mt-1" disabled={loading}>
                 {loading ? 'กำลังบันทึก...' : 'แจ้งเตือนฉัน'}

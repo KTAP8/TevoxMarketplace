@@ -158,7 +158,7 @@ export default function ProductDetail() {
 
             {/* Price + countdown + stock */}
             <div className="flex items-baseline gap-4 flex-wrap">
-              <span className="font-mono font-bold text-display text-brand-dark tabular-nums">฿{price}</span>
+              <span className="font-mono font-bold text-h2 text-brand-dark tabular-nums">฿{price}</span>
               {countdown && product.status === 'preorder' && (
                 <span className="font-mono text-micro text-zinc-400 tracking-wider">
                   ปิดรับใน {countdown.days}ว {countdown.hours}ชม
