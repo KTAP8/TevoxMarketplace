@@ -17,3 +17,6 @@ Icon
 .idea/
 *.swp
 *.sw?
+
+# ── Local admin tool (never deploy) ───────────────────
+tevox-admin/
