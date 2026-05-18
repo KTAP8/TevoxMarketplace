@@ -48,8 +48,8 @@ export default function Footer() {
           {/* Brand */}
           <div className="flex flex-col gap-4">
             <p className="text-caption text-zinc-500 max-w-xs leading-relaxed">
-              ชิ้นส่วนแต่งรถ EV คุณภาพสูง ทดสอบจริงบน MG IM6<br />
-              Built by owners. For owners.
+              ชิ้นส่วนแต่งรถ EV คุณภาพสูง ทดสอบจริง<br />
+              Built by Engineers. Driven by Passion.
             </p>
           </div>
 

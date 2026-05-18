@@ -61,7 +61,7 @@ export default function About() {
             </div>
           </div>
           <div className="hidden md:block relative">
-            <img src="https://placehold.co/600x700/131312/E9FF22?text=Founder" alt="ผู้ก่อตั้ง Tevox" className="absolute inset-0 w-full h-full object-cover" />
+            <img src="https://pub-8e41e2b3a9c54834a89b577b2c07cb83.r2.dev/founder_img.png" alt="ผู้ก่อตั้ง Tevox" className="absolute inset-0 w-full h-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-r from-brand-dark via-transparent to-transparent w-20" />
             <div className="absolute bottom-8 left-6">
               <p className="font-mono text-micro text-zinc-600 tracking-[0.15em] uppercase">[ FOUNDER · MG IM6 OWNER ]</p>

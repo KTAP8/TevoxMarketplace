@@ -137,21 +137,20 @@ export default function Home({ onChatOpen }) {
             <div className="flex items-center gap-3 mb-10 animate-fade-up">
               <div className="h-px w-6 bg-brand-yellow shrink-0" />
               <span className="font-mono text-micro text-zinc-500 tracking-[0.18em] uppercase">
-                MG IM6 · Thailand · EV Aftermarket
+                MG IM6 · BKK Thailand · EV Aftermarket
               </span>
             </div>
             <h1 className="mb-8">
               <span className="animate-fade-up block font-black text-display text-zinc-100 leading-none">
-                ชิ้นส่วนแต่งรถ EV
+                แต่งรถ EV
               </span>
               <div className="animate-fade-up-2 h-px w-12 bg-brand-yellow my-5" />
               <span className="animate-fade-up-2 block font-light text-display text-brand-yellow leading-none">
-                ที่สุดท้ายมีแล้ว
+                ไม่แพ้รถน้ำมัน
               </span>
             </h1>
             <p className="animate-fade-up-3 text-zinc-500 text-body max-w-sm mb-10 leading-relaxed">
-              ทดสอบจริงบน MG IM6 ก่อนทุกครั้ง<br />
-              ไม่ขายของที่ตัวเองไม่กล้าใส่รถตัวเอง
+              Built by Engineers, Driven by Passion
             </p>
             <div className="animate-fade-up-3 flex flex-wrap gap-3">
               <Link to="/products"><Button variant="primary" size="lg">ดูสินค้า</Button></Link>
@@ -162,7 +161,7 @@ export default function Home({ onChatOpen }) {
           {/* Right: image */}
           <div className="hidden md:block relative overflow-hidden">
             <img
-              src="https://placehold.co/600x900/131312/E9FF22?text=MG+IM6"
+              src="https://pub-8e41e2b3a9c54834a89b577b2c07cb83.r2.dev/heroCarImg.png"
               alt="MG IM6"
               className="absolute inset-0 w-full h-full object-cover"
             />
