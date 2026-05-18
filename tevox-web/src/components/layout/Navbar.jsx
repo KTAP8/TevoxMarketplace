@@ -20,7 +20,7 @@ export default function Navbar({ onChatOpen }) {
   const [menuOpen, setMenuOpen] = useState(false)
 
   const linkClass = ({ isActive }) =>
-    `font-mono text-micro tracking-[0.12em] uppercase transition-colors ${
+    `font-mono text-caption tracking-[0.12em] uppercase transition-colors ${
       isActive
         ? 'text-brand-yellow border-b border-brand-yellow pb-0.5'
         : 'text-zinc-400 hover:text-zinc-100'

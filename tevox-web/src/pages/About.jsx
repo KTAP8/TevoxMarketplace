@@ -80,10 +80,10 @@ export default function About() {
             {steps.map(({ step, title, desc }) => (
               <div key={step} className="bg-white p-8 flex flex-col gap-5">
                 <div className="flex items-start gap-4">
-                  <span className="font-mono font-bold text-[52px] text-zinc-100 leading-none tabular-nums shrink-0">
+                  <span className="font-mono font-bold text-[52px] text-zinc-800 leading-none tabular-nums shrink-0">
                     {step}
                   </span>
-                  <div className="pt-7 h-px flex-1 bg-zinc-200" />
+                  <div className="pt-7 h-px flex-1 bg-zinc-400" />
                 </div>
                 <h3 className="text-h3 font-bold text-brand-dark">{title}</h3>
                 <p className="text-body text-zinc-500 leading-relaxed">{desc}</p>
