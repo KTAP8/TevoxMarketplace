@@ -106,6 +106,7 @@ export default function Chatbot({ isOpen, onClose }) {
   const [loading, setLoading]   = useState(false)
   const bottomRef               = useRef(null)
   const inputRef                = useRef(null)
+  const panelRef                = useRef(null)
   const { settings }            = useSettings()
 
   useEffect(() => {
@@ -114,6 +115,32 @@ export default function Chatbot({ isOpen, onClose }) {
 
   useEffect(() => {
     if (isOpen) setTimeout(() => inputRef.current?.focus(), 300)
+  }, [isOpen])
+
+  // Lock body scroll while chat is open so iOS doesn't scroll the page behind it
+  useEffect(() => {
+    if (!isOpen) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = prev }
+  }, [isOpen])
+
+  // Visual Viewport API — keeps the panel sized to the usable area above the keyboard
+  useEffect(() => {
+    const vv = window.visualViewport
+    if (!vv || !isOpen) return
+
+    function update() {
+      if (!panelRef.current || window.innerWidth >= 768) return
+      panelRef.current.style.height = `${vv.height}px`
+    }
+
+    update()
+    vv.addEventListener('resize', update)
+    return () => {
+      vv.removeEventListener('resize', update)
+      if (panelRef.current) panelRef.current.style.height = ''
+    }
   }, [isOpen])
 
   async function send() {
@@ -187,14 +214,15 @@ export default function Chatbot({ isOpen, onClose }) {
             Mobile:  full-width, full-height (100dvh), slides up from below
             Desktop: right side panel, slides in from right              */}
         <div
+          ref={panelRef}
           aria-hidden={!isOpen}
           className={`
             absolute flex flex-col bg-brand-dark
             transition-transform duration-300 ease-out
             ${isOpen ? 'pointer-events-auto' : 'pointer-events-none'}
 
-            inset-x-0 bottom-0 h-[100dvh] border-t border-zinc-800
-            md:inset-y-0 md:right-0 md:left-auto md:bottom-auto md:w-[380px] md:border-t-0 md:border-l
+            inset-x-0 top-0 h-[100dvh] border-b border-zinc-800
+            md:inset-y-0 md:right-0 md:left-auto md:top-auto md:w-[380px] md:h-full md:border-b-0 md:border-l
 
             ${isOpen
               ? 'translate-y-0 md:translate-x-0'
@@ -255,7 +283,8 @@ export default function Chatbot({ isOpen, onClose }) {
               onKeyDown={handleKey}
               placeholder="พิมพ์ข้อความ..."
               rows={1}
-              className="flex-1 bg-zinc-900 border border-zinc-700 rounded-none px-3 py-2.5 text-zinc-100 resize-none focus:outline-none focus:border-brand-yellow placeholder-zinc-700 font-mono text-caption"
+              style={{ fontSize: 16 }}
+              className="flex-1 bg-zinc-900 border border-zinc-700 rounded-none px-3 py-2.5 text-zinc-100 resize-none focus:outline-none focus:border-brand-yellow placeholder-zinc-700 font-mono"
             />
             <button
               onClick={send}
