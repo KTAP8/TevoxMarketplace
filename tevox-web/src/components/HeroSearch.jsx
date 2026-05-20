@@ -12,7 +12,6 @@ function localSearch(query, products) {
   return products.filter(p => {
     const hay = [p.sku, p.name_th, p.name_en, p.car_model, p.category, p.description_th]
       .filter(Boolean).join(' ').toLowerCase()
-    // Full phrase match OR every word present
     return hay.includes(q) || words.every(w => hay.includes(w))
   })
 }
@@ -21,13 +20,21 @@ function findProductsInReply(reply, products) {
   const r = reply.toLowerCase()
   return products.filter(p => {
     if (r.includes(p.sku.toLowerCase())) return true
-    // Match on significant words from the Thai product name
     const words = p.name_th.toLowerCase().split(/\s+/).filter(w => w.length > 2)
     return words.some(w => r.includes(w))
   })
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
+
+function SearchIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="square">
+      <circle cx="8.5" cy="8.5" r="5.5" />
+      <line x1="13" y1="13" x2="18" y2="18" />
+    </svg>
+  )
+}
 
 function ResultItem({ product, onSelect }) {
   const imgKey = product.image_keys?.[0]
@@ -73,7 +80,7 @@ function TypingDots() {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function HeroSearch({ products, onChatOpen }) {
+export default function HeroSearch({ products, suggestions = [], onChatOpen }) {
   const [query, setQuery]     = useState('')
   const [results, setResults] = useState(null)
   const [aiReply, setAiReply] = useState('')
@@ -82,7 +89,6 @@ export default function HeroSearch({ products, onChatOpen }) {
   const containerRef          = useRef(null)
   const inputRef              = useRef(null)
 
-  // Close on outside click
   useEffect(() => {
     function onDown(e) {
       if (containerRef.current && !containerRef.current.contains(e.target)) clear()
@@ -91,7 +97,6 @@ export default function HeroSearch({ products, onChatOpen }) {
     return () => document.removeEventListener('mousedown', onDown)
   }, [])
 
-  // Close on Escape
   useEffect(() => {
     function onKey(e) { if (e.key === 'Escape') { clear(); inputRef.current?.blur() } }
     window.addEventListener('keydown', onKey)
@@ -111,17 +116,15 @@ export default function HeroSearch({ products, onChatOpen }) {
       return
     }
 
-    // Synchronous local match — no delay
     const local = localSearch(q, products)
     if (local.length) {
-      setResults(local.slice(0, 4))
+      setResults(local.slice(0, 5))
       setAiReply('')
       setUsedAi(false)
       setLoading(false)
       return () => { cancelled = true }
     }
 
-    // No local match — show loading then ask AI after debounce
     setLoading(true)
     setResults(null)
 
@@ -137,7 +140,7 @@ export default function HeroSearch({ products, onChatOpen }) {
         const { reply } = data
         const found = findProductsInReply(reply, products)
         setAiReply(reply)
-        setResults(found.slice(0, 4))
+        setResults(found.slice(0, 5))
       } catch {
         if (!cancelled) {
           setAiReply('ขออภัยครับ ลองอีกทีได้เลยครับ')
@@ -166,35 +169,56 @@ export default function HeroSearch({ products, onChatOpen }) {
   const showPanel = results !== null || loading
 
   return (
-    <div ref={containerRef} className="relative w-full max-w-md">
+    <div ref={containerRef} className="relative w-full">
 
-      {/* Search bar */}
-      <div className="relative flex">
+      {/* Input */}
+      <div className="relative flex items-center">
+        <span className="absolute left-4 text-zinc-600 pointer-events-none">
+          <SearchIcon />
+        </span>
         <input
           ref={inputRef}
           type="text"
           value={query}
           onChange={e => setQuery(e.target.value)}
-          placeholder="รถรุ่นไหน อยากแต่งอะไร?"
+          placeholder="พิมพ์รุ่นรถ หรืออะไรที่อยากแต่ง..."
           style={{ fontSize: 16 }}
-          className="flex-1 bg-zinc-900/80 border border-zinc-700 focus:border-brand-yellow px-4 py-3.5 text-zinc-100 placeholder-zinc-600 focus:outline-none font-mono text-caption tracking-wide"
+          className="w-full bg-zinc-900 border border-zinc-700 focus:border-brand-yellow pl-11 pr-12 py-4 text-zinc-100 placeholder-zinc-600 focus:outline-none font-mono text-caption tracking-wide transition-colors"
         />
-        {query && (
+        {query ? (
           <button
             type="button"
             onClick={() => { clear(); inputRef.current?.focus() }}
-            className="absolute right-0 top-0 bottom-0 px-4 text-zinc-500 hover:text-zinc-200 font-mono text-body transition-colors"
+            className="absolute right-4 text-zinc-500 hover:text-zinc-200 font-mono text-body transition-colors leading-none"
           >
             ×
           </button>
+        ) : (
+          <span className="absolute right-4 font-mono text-micro text-zinc-700 tracking-widest pointer-events-none hidden sm:block">
+            AI
+          </span>
         )}
       </div>
 
+      {/* Suggestion pills — shown when input is empty */}
+      {!query && suggestions.length > 0 && (
+        <div className="flex flex-wrap gap-2 mt-3">
+          {suggestions.map(s => (
+            <button
+              key={s}
+              onClick={() => { setQuery(s); inputRef.current?.focus() }}
+              className="font-mono text-micro text-zinc-500 border border-zinc-800 hover:border-brand-yellow hover:text-brand-yellow px-3 py-1.5 transition-colors tracking-wider"
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Results panel */}
       {showPanel && (
-        <div className="absolute top-full left-0 right-0 z-30 bg-zinc-900 border border-zinc-700 border-t-zinc-800 shadow-2xl max-h-[320px] overflow-y-auto">
+        <div className="absolute top-full left-0 right-0 z-30 bg-zinc-900 border border-zinc-700 border-t-0 shadow-2xl max-h-[360px] overflow-y-auto">
 
-          {/* Loading */}
           {loading && (
             <div className="px-4 py-4 flex items-center gap-3">
               <TypingDots />
@@ -204,46 +228,32 @@ export default function HeroSearch({ products, onChatOpen }) {
             </div>
           )}
 
-          {/* Nox AI reply */}
           {!loading && usedAi && aiReply && (
             <div className="px-4 py-3 border-b border-zinc-800 flex gap-2.5 items-start">
               <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full mt-1.5 shrink-0 animate-pulse" />
-              <p className="font-mono text-micro text-zinc-400 leading-relaxed tracking-wide">
-                {aiReply}
-              </p>
+              <p className="font-mono text-micro text-zinc-400 leading-relaxed tracking-wide">{aiReply}</p>
             </div>
           )}
 
-          {/* Product results */}
-          {!loading && results?.length > 0 && (
-            <div>
-              {results.map(p => (
-                <ResultItem key={p.id} product={p} onSelect={clear} />
-              ))}
-            </div>
-          )}
+          {!loading && results?.length > 0 && results.map(p => (
+            <ResultItem key={p.id} product={p} onSelect={clear} />
+          ))}
 
-          {/* No results footer */}
           {!loading && results?.length === 0 && (
             <div className="px-4 py-3.5 flex items-center justify-between gap-3">
-              <span className="font-mono text-micro text-zinc-600 tracking-wider">
-                ไม่เจอสินค้าที่ตรงครับ
-              </span>
+              <span className="font-mono text-micro text-zinc-600 tracking-wider">ไม่เจอสินค้าที่ตรงครับ</span>
               <button
                 onClick={() => { clear(); onChatOpen?.() }}
                 className="font-mono text-micro text-brand-yellow tracking-wider hover:underline shrink-0"
               >
-                คุยกับ Nox เพิ่มเติม →
+                คุยกับ Nox →
               </button>
             </div>
           )}
 
-          {/* Footer when results exist */}
           {!loading && results?.length > 0 && (
             <div className="px-4 py-2.5 border-t border-zinc-800 flex items-center justify-between">
-              <span className="font-mono text-micro text-zinc-700 tracking-wider">
-                {results.length} รายการ
-              </span>
+              <span className="font-mono text-micro text-zinc-700 tracking-wider">{results.length} รายการ</span>
               <button
                 onClick={() => { clear(); onChatOpen?.() }}
                 className="font-mono text-micro text-zinc-600 hover:text-brand-yellow transition-colors tracking-wider"
@@ -252,7 +262,6 @@ export default function HeroSearch({ products, onChatOpen }) {
               </button>
             </div>
           )}
-
         </div>
       )}
     </div>

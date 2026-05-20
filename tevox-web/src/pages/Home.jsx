@@ -136,55 +136,76 @@ export default function Home({ onChatOpen }) {
   const { installs } = useInstalls({ limit: 6 })
   const featured = products.slice(0, 3)
 
+  const suggestions = [
+    ...[...new Set(products.map(p => p.car_model))].slice(0, 3),
+    ...[...new Set(products.map(p => p.category))].slice(0, 2),
+  ].slice(0, 5)
+
   return (
     <div className="flex flex-col">
 
-      {/* ── Hero (dark) ── */}
-      <section className="relative bg-brand-dark bg-dot-pattern overflow-hidden" style={{ minHeight: '92vh' }}>
-        <div className="relative z-20 max-w-7xl mx-auto min-h-[92vh] grid grid-cols-1 md:grid-cols-[1fr_440px] lg:grid-cols-[1fr_540px] items-stretch">
+      {/* ── Hero (dark, search-centric) ── */}
+      <section className="relative bg-brand-dark overflow-hidden" style={{ minHeight: '88vh' }}>
 
-          {/* Left: text */}
-          <div className="flex flex-col justify-center px-6 md:px-12 lg:px-16 py-28 md:py-20">
-            <div className="flex items-center gap-3 mb-10 animate-fade-up">
-              <div className="h-px w-6 bg-brand-yellow shrink-0" />
-              <span className="font-mono text-micro text-zinc-500 tracking-[0.18em] uppercase">
-                MG IM6 · BKK Thailand · EV Aftermarket
-              </span>
-            </div>
-            <h1 className="mb-8">
-              <span className="animate-fade-up block font-black text-display text-zinc-100 leading-none">
-                แต่งรถ EV
-              </span>
-              <div className="animate-fade-up-2 h-px w-12 bg-brand-yellow my-5" />
-              <span className="animate-fade-up-2 block font-light text-display text-brand-yellow leading-none">
-                ไม่แพ้รถน้ำมัน
-              </span>
-            </h1>
-            <p className="animate-fade-up-3 text-zinc-500 text-body max-w-sm mb-8 leading-relaxed">
-              Built by Engineers, Driven by Passion
-            </p>
-            <div className="animate-fade-up-3 mb-6 relative z-40">
-              <HeroSearch products={products} onChatOpen={onChatOpen} />
-            </div>
-            <div className="animate-fade-up-3 flex flex-wrap gap-3">
-              <Link to="/products"><Button variant="secondary" size="lg">ดูสินค้าทั้งหมด</Button></Link>
-              <Button variant="secondary" size="lg" onClick={() => setWaitlistOpen(true)}>แจ้งเตือน</Button>
-            </div>
+        {/* Background car image */}
+        <img
+          src="https://pub-8e41e2b3a9c54834a89b577b2c07cb83.r2.dev/heroCarImg.png"
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 w-full h-full object-cover object-center opacity-20 pointer-events-none select-none"
+        />
+        {/* Gradient overlays */}
+        <div className="absolute inset-0 bg-gradient-to-b from-brand-dark/60 via-transparent to-brand-dark pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-r from-brand-dark/40 via-transparent to-brand-dark/40 pointer-events-none" />
+
+        {/* Content */}
+        <div className="relative z-10 flex flex-col items-center justify-center min-h-[88vh] px-6 py-20 text-center">
+
+          {/* Eyebrow */}
+          <div className="flex items-center gap-3 mb-8 animate-fade-up">
+            <div className="h-px w-6 bg-brand-yellow shrink-0" />
+            <span className="font-mono text-micro text-zinc-500 tracking-[0.18em] uppercase">
+              EV Aftermarket · Bangkok Thailand
+            </span>
+            <div className="h-px w-6 bg-brand-yellow shrink-0" />
           </div>
 
-          {/* Right: image */}
-          <div className="hidden md:block relative overflow-hidden">
-            <img
-              src="https://pub-8e41e2b3a9c54834a89b577b2c07cb83.r2.dev/heroCarImg.png"
-              alt="MG IM6"
-              className="absolute inset-0 w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-r from-brand-dark via-transparent to-transparent w-16" />
-            <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-brand-dark to-transparent" />
-            <div className="absolute bottom-6 left-6">
-              <span className="font-mono text-micro text-zinc-600 tracking-[0.2em] uppercase">[ MG IM6 · 2024 ]</span>
-            </div>
+          {/* Headline */}
+          <h1 className="mb-10 animate-fade-up-2">
+            <span className="block font-black text-display text-zinc-100 leading-none">
+              หาชิ้นส่วนแต่ง
+            </span>
+            <span className="block font-light text-display text-brand-yellow leading-none mt-2">
+              รถ EV ของคุณ
+            </span>
+          </h1>
+
+          {/* Search bar — focal point */}
+          <div className="w-full max-w-2xl animate-fade-up-3 relative z-20">
+            <HeroSearch products={products} suggestions={suggestions} onChatOpen={onChatOpen} />
           </div>
+
+          {/* Secondary CTAs */}
+          <div className="animate-fade-up-3 flex items-center gap-6 mt-8">
+            <Link
+              to="/products"
+              className="font-mono text-caption text-zinc-400 hover:text-brand-yellow transition-colors tracking-wider border-b border-zinc-700 hover:border-brand-yellow pb-0.5"
+            >
+              ดูสินค้าทั้งหมด →
+            </Link>
+            <span className="text-zinc-800">|</span>
+            <button
+              onClick={() => setWaitlistOpen(true)}
+              className="font-mono text-caption text-zinc-400 hover:text-brand-yellow transition-colors tracking-wider border-b border-zinc-700 hover:border-brand-yellow pb-0.5"
+            >
+              แจ้งเตือนสินค้าใหม่
+            </button>
+          </div>
+
+          {/* Car model label */}
+          <p className="mt-12 font-mono text-micro text-zinc-700 tracking-[0.2em] uppercase animate-fade-up-3">
+            [ MG IM6 · BYD Seal · Tesla Model 3 · และอื่นๆ ]
+          </p>
         </div>
 
         {/* Stats strip */}
