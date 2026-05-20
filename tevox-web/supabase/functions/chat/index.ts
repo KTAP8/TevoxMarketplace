@@ -1,5 +1,4 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
-import OpenAI from 'npm:openai'
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin':  '*',
@@ -7,10 +6,26 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Headers': 'authorization, content-type, x-client-info, apikey',
 }
 
-const deepseek = new OpenAI({
-  apiKey:  Deno.env.get('DEEPSEEK_API_KEY')!,
-  baseURL: 'https://api.deepseek.com',
-})
+async function callDeepSeek(messages: { role: string; content: string }[]) {
+  const res = await fetch('https://api.deepseek.com/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type':  'application/json',
+      'Authorization': `Bearer ${Deno.env.get('DEEPSEEK_API_KEY')}`,
+    },
+    body: JSON.stringify({
+      model:      'deepseek-v4-pro',
+      max_tokens: 1000,
+      messages,
+    }),
+  })
+  if (!res.ok) {
+    const err = await res.text()
+    throw new Error(`DeepSeek ${res.status}: ${err}`)
+  }
+  const data = await res.json()
+  return data.choices[0].message.content ?? ''
+}
 
 const supabase = createClient(
   Deno.env.get('SUPABASE_URL')!,
@@ -146,21 +161,13 @@ Deno.serve(async (req) => {
 
     const systemPrompt = buildSystemPrompt(products ?? [])
 
-    const completion = await deepseek.chat.completions.create({
-      model:            'deepseek-v4-pro',
-      max_tokens:       1000,
-      thinking:         { type: 'enabled' } as any,
-      reasoning_effort: 'medium' as any,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        ...messages.map((m: { role: string; content: string }) => ({
-          role:    m.role === 'assistant' ? 'assistant' as const : 'user' as const,
-          content: m.content,
-        })),
-      ],
-    })
-
-    const raw = completion.choices[0].message.content ?? ''
+    const raw = await callDeepSeek([
+      { role: 'system', content: systemPrompt },
+      ...messages.map((m: { role: string; content: string }) => ({
+        role:    m.role === 'assistant' ? 'assistant' : 'user',
+        content: m.content,
+      })),
+    ])
 
     // Lead capture — AI returns JSON only
     try {
