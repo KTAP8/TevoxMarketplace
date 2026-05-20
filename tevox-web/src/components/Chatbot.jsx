@@ -117,7 +117,7 @@ export default function Chatbot({ isOpen, onClose }) {
     if (isOpen) setTimeout(() => inputRef.current?.focus(), 300)
   }, [isOpen])
 
-  // Lock body scroll while chat is open so iOS doesn't scroll the page behind it
+  // Prevent the page behind the chat from scrolling on mobile
   useEffect(() => {
     if (!isOpen) return
     const prev = document.body.style.overflow
@@ -125,21 +125,28 @@ export default function Chatbot({ isOpen, onClose }) {
     return () => { document.body.style.overflow = prev }
   }, [isOpen])
 
-  // Visual Viewport API — keeps the panel sized to the usable area above the keyboard
+  // Visual Viewport API — resizes the panel to stay above the keyboard on iOS.
+  // On Android the viewport itself shrinks so top-0/bottom-0 handles it natively.
   useEffect(() => {
     const vv = window.visualViewport
     if (!vv || !isOpen) return
 
     function update() {
       if (!panelRef.current || window.innerWidth >= 768) return
+      panelRef.current.style.top    = `${vv.offsetTop}px`
       panelRef.current.style.height = `${vv.height}px`
     }
 
     update()
     vv.addEventListener('resize', update)
+    vv.addEventListener('scroll', update)
     return () => {
       vv.removeEventListener('resize', update)
-      if (panelRef.current) panelRef.current.style.height = ''
+      vv.removeEventListener('scroll', update)
+      if (panelRef.current) {
+        panelRef.current.style.top    = ''
+        panelRef.current.style.height = ''
+      }
     }
   }, [isOpen])
 
@@ -186,7 +193,7 @@ export default function Chatbot({ isOpen, onClose }) {
 
   return (
     <>
-      {/* Floating button — hidden when chat is open */}
+      {/* Floating button */}
       {!isOpen && (
         <button
           onClick={() => onClose(false)}
@@ -199,101 +206,93 @@ export default function Chatbot({ isOpen, onClose }) {
         </button>
       )}
 
-      {/* Backdrop + panel — always in DOM for smooth transitions */}
-      <div className="fixed inset-0 z-50 pointer-events-none">
+      {/* Backdrop — directly fixed, mobile only */}
+      <div
+        className={`fixed inset-0 z-40 bg-black/60 md:hidden transition-opacity duration-300 ${
+          isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        }`}
+        onClick={onClose}
+      />
 
-        {/* Backdrop (mobile only) */}
-        <div
-          className={`absolute inset-0 bg-black/60 transition-opacity duration-300 md:hidden ${
-            isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
-          }`}
-          onClick={onClose}
-        />
-
-        {/* Chat panel
-            Mobile:  full-width, full-height (100dvh), slides up from below
-            Desktop: right side panel, slides in from right              */}
-        <div
-          ref={panelRef}
-          aria-hidden={!isOpen}
-          className={`
-            absolute flex flex-col bg-brand-dark
-            transition-transform duration-300 ease-out
-            ${isOpen ? 'pointer-events-auto' : 'pointer-events-none'}
-
-            inset-x-0 top-0 h-[100dvh] border-b border-zinc-800
-            md:inset-y-0 md:right-0 md:left-auto md:top-auto md:w-[380px] md:h-full md:border-b-0 md:border-l
-
-            ${isOpen
-              ? 'translate-y-0 md:translate-x-0'
-              : 'translate-y-full md:translate-y-0 md:translate-x-full'
-            }
-          `}
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800 shrink-0">
-            <div className="flex items-center gap-3">
-              <div className="w-1.5 h-1.5 bg-emerald-400 animate-pulse" />
-              <div>
-                <p className="font-mono text-caption text-zinc-100 tracking-wider">NOX <span className="text-zinc-600">// TEVOX</span></p>
-                <p className="font-mono text-micro text-zinc-600 tracking-wider">AI ผู้ช่วยหาชิ้นส่วนแต่งรถ EV</p>
-              </div>
+      {/* Chat panel — directly fixed so the browser can resize it with the keyboard */}
+      <div
+        ref={panelRef}
+        aria-hidden={!isOpen}
+        className={`
+          fixed z-50 flex flex-col bg-brand-dark
+          transition-transform duration-300 ease-out
+          ${isOpen ? 'pointer-events-auto' : 'pointer-events-none'}
+          inset-x-0 top-0 bottom-0
+          md:left-auto md:inset-y-0 md:w-[380px] md:border-l md:border-zinc-800
+          ${isOpen
+            ? 'translate-y-0 md:translate-x-0'
+            : 'translate-y-full md:translate-y-0 md:translate-x-full'
+          }
+        `}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-1.5 h-1.5 bg-emerald-400 animate-pulse" />
+            <div>
+              <p className="font-mono text-caption text-zinc-100 tracking-wider">NOX <span className="text-zinc-600">// TEVOX</span></p>
+              <p className="font-mono text-micro text-zinc-600 tracking-wider">AI ผู้ช่วยหาชิ้นส่วนแต่งรถ EV</p>
             </div>
-            <button
-              onClick={onClose}
-              className="font-mono text-micro text-zinc-600 hover:text-zinc-300 tracking-widest uppercase transition-colors px-3 py-2 hover:bg-zinc-800 -mr-1"
-              aria-label="ปิดแชท"
-            >
-              [ ปิด ]
-            </button>
           </div>
-
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3">
-            {messages.map((msg, i) => (
-              <ChatBubble key={i} msg={msg} messengerUrl={settings.messenger_url} />
-            ))}
-            {loading && <TypingIndicator />}
-            <div ref={bottomRef} />
-          </div>
-
-          {/* Messenger shortcut */}
-          {settings.messenger_url && (
-            <div className="px-4 pb-2 shrink-0">
-              <a
-                href={settings.messenger_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-mono text-micro text-zinc-600 hover:text-brand-yellow transition-colors tracking-wider"
-              >
-                → สั่งซื้อผ่าน Messenger
-              </a>
-            </div>
-          )}
-
-          {/* Input — safe-area-inset-bottom keeps it above the home indicator */}
-          <div
-            className="border-t border-zinc-800 px-3 pt-3 flex gap-2 shrink-0"
-            style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
+          <button
+            onClick={onClose}
+            className="font-mono text-micro text-zinc-600 hover:text-zinc-300 tracking-widest uppercase transition-colors px-3 py-2 hover:bg-zinc-800 -mr-1"
+            aria-label="ปิดแชท"
           >
-            <textarea
-              ref={inputRef}
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={handleKey}
-              placeholder="พิมพ์ข้อความ..."
-              rows={1}
-              style={{ fontSize: 16 }}
-              className="flex-1 bg-zinc-900 border border-zinc-700 rounded-none px-3 py-2.5 text-zinc-100 resize-none focus:outline-none focus:border-brand-yellow placeholder-zinc-700 font-mono"
-            />
-            <button
-              onClick={send}
-              disabled={!input.trim() || loading}
-              className="bg-brand-yellow text-brand-dark w-11 h-11 flex items-center justify-center rounded-none font-bold disabled:opacity-30 hover:brightness-105 transition-all shrink-0 self-end"
+            [ ปิด ]
+          </button>
+        </div>
+
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3">
+          {messages.map((msg, i) => (
+            <ChatBubble key={i} msg={msg} messengerUrl={settings.messenger_url} />
+          ))}
+          {loading && <TypingIndicator />}
+          <div ref={bottomRef} />
+        </div>
+
+        {/* Messenger shortcut */}
+        {settings.messenger_url && (
+          <div className="px-4 pb-2 shrink-0">
+            <a
+              href={settings.messenger_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-mono text-micro text-zinc-600 hover:text-brand-yellow transition-colors tracking-wider"
             >
-              <SendIcon />
-            </button>
+              → สั่งซื้อผ่าน Messenger
+            </a>
           </div>
+        )}
+
+        {/* Input */}
+        <div
+          className="border-t border-zinc-800 px-3 pt-3 flex gap-2 shrink-0"
+          style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
+        >
+          <textarea
+            ref={inputRef}
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={handleKey}
+            placeholder="พิมพ์ข้อความ..."
+            rows={1}
+            style={{ fontSize: 16 }}
+            className="flex-1 bg-zinc-900 border border-zinc-700 rounded-none px-3 py-2.5 text-zinc-100 resize-none focus:outline-none focus:border-brand-yellow placeholder-zinc-700 font-mono"
+          />
+          <button
+            onClick={send}
+            disabled={!input.trim() || loading}
+            className="bg-brand-yellow text-brand-dark w-11 h-11 flex items-center justify-center rounded-none font-bold disabled:opacity-30 hover:brightness-105 transition-all shrink-0 self-end"
+          >
+            <SendIcon />
+          </button>
         </div>
       </div>
     </>
