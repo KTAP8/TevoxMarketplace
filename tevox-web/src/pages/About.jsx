@@ -2,10 +2,29 @@ import { Link } from 'react-router-dom'
 import Button from '../components/ui/Button'
 import { useSettings } from '../hooks/useSettings'
 
+function SocialIcon({ platform }) {
+  if (platform === 'TikTok') return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M16.6 5.82s1.42 1.83 3.4 1.83v3.19c-1.27 0-2.37-.4-3.24-.99v4.42c0 4.47-3.59 7.73-7.76 7.73-4.17 0-7.76-3.26-7.76-7.73s3.59-7.73 7.76-7.73v3.28c-2.43 0-4.57 1.87-4.57 4.45s2.14 4.45 4.57 4.45c2.43 0 4.57-1.87 4.57-4.45V1h3.03v4.82z" />
+    </svg>
+  )
+  if (platform === 'Facebook') return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z" />
+    </svg>
+  )
+  if (platform === 'Messenger') return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 2C6.477 2 2 6.477 2 12c0 3.062 1.445 5.791 3.712 7.569L5.75 22l2.475-1.344A9.908 9.908 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm1.07 13.024l-2.551-2.72-4.979 2.718 5.477-5.817 2.613 2.72 4.916-2.72-5.476 5.819z" />
+    </svg>
+  )
+  return null
+}
+
 const steps = [
   { step: '01', title: 'ซื้อตรงจากโรงงานจีน', desc: 'คัดเลือกผู้ผลิตที่เชื่อถือได้ในจีน เจรจาตรง ไม่ผ่านคนกลาง' },
-  { step: '02', title: 'ตรวจสอบคุณภาพ', desc: 'ทดสอบการติดตั้งจริงบน MG IM6 ของผู้ก่อตั้งก่อนทุกครั้ง' },
-  { step: '03', title: 'จัดส่งในไทย', desc: 'พร้อมคู่มือติดตั้งภาษาไทย และ support ตลอดผ่าน Facebook Messenger' },
+  { step: '02', title: 'ตรวจสอบคุณภาพ', desc: 'เช็คคุณภาพและความพอดีก่อนส่งถึงมือลูกค้าทุกชิ้น ออกแบบให้ติดตั้งโดยไม่ต้องเจาะตัวถังรถ เพื่อรักษาสภาพสีและโครงสร้างเดิมของรถ' },
+  { step: '03', title: 'ติดตั้งโดยช่างที่ไว้ใจได้', desc: 'ติดตั้งที่ร้านพาร์ทเนอร์ บางกระดี่ ใส่ใจทุกจุด หากมีโอกาสที่บอดี้คิทจะเสียดสีรถในระยะยาว เราจะติด PPF ป้องกันให้ก่อนเสมอ' },
 ]
 
 const values = [
@@ -113,18 +132,29 @@ export default function About() {
         </div>
       </section>
 
-      {/* ── Social CTA (white) ── */}
-      <section className="bg-white">
+      {/* ── Social CTA (dark) ── */}
+      <section className="bg-brand-dark border-t border-zinc-800">
         <div className="max-w-7xl mx-auto px-6 py-16 flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
           <div className="flex flex-col gap-2">
-            <p className="font-mono text-micro text-zinc-400 tracking-[0.15em] uppercase">[ FOLLOW US ]</p>
-            <h2 className="text-h2 font-black text-brand-dark">ติดตามเราได้ที่</h2>
+            <p className="font-mono text-micro text-zinc-600 tracking-[0.15em] uppercase">[ FOLLOW US ]</p>
+            <h2 className="text-h2 font-black text-zinc-100">ติดตามเราได้ที่</h2>
             <p className="text-zinc-500 text-body">อัปเดตสินค้าใหม่ รีวิว และเทคนิคการแต่งรถ EV</p>
           </div>
           <div className="flex flex-wrap gap-3">
             {socialLinks.map(({ href, label, primary }) => (
-              <a key={label} href={href} target="_blank" rel="noopener noreferrer">
-                <Button variant={primary ? 'primary' : 'secondary'}>{label}</Button>
+              <a
+                key={label}
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`flex items-center gap-2.5 border px-5 py-3 font-mono text-caption tracking-wider transition-colors group ${
+                  primary
+                    ? 'border-brand-yellow text-brand-yellow hover:bg-brand-yellow hover:text-brand-dark'
+                    : 'border-zinc-700 text-zinc-400 hover:border-brand-yellow hover:text-brand-yellow'
+                }`}
+              >
+                <SocialIcon platform={label} />
+                {label}
               </a>
             ))}
           </div>

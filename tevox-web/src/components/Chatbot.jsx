@@ -8,6 +8,37 @@ const OPENING_MESSAGE = {
   content: 'สวัสดีครับ ผม Nox ครับบ มีอะไรให้ช่วยได้เลย 👋\nรถคุณรุ่นอะไรครับ?',
 }
 
+// ── Markdown renderer ─────────────────────────────────────────────────────────
+
+function renderInline(text) {
+  const segments = []
+  const regex = /\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`/g
+  let last = 0, m
+  while ((m = regex.exec(text)) !== null) {
+    if (m.index > last) segments.push({ t: 'text', v: text.slice(last, m.index) })
+    if (m[1] !== undefined)      segments.push({ t: 'bold',   v: m[1] })
+    else if (m[2] !== undefined) segments.push({ t: 'italic', v: m[2] })
+    else                         segments.push({ t: 'code',   v: m[3] })
+    last = m.index + m[0].length
+  }
+  if (last < text.length) segments.push({ t: 'text', v: text.slice(last) })
+  return segments.map((s, i) => {
+    if (s.t === 'bold')   return <strong key={i} className="font-bold">{s.v}</strong>
+    if (s.t === 'italic') return <em key={i} className="italic">{s.v}</em>
+    if (s.t === 'code')   return <code key={i} className="bg-zinc-700/60 px-1 font-mono text-brand-yellow text-sm">{s.v}</code>
+    return s.v
+  })
+}
+
+function MessageContent({ text }) {
+  return text.split('\n').map((line, i, arr) => (
+    <span key={i}>
+      {renderInline(line)}
+      {i < arr.length - 1 && <br />}
+    </span>
+  ))
+}
+
 // ── Bubble components ─────────────────────────────────────────────────────────
 
 function TextBubble({ msg, messengerUrl }) {
@@ -15,13 +46,13 @@ function TextBubble({ msg, messengerUrl }) {
   return (
     <div className={`flex flex-col gap-2 ${isUser ? 'items-end' : 'items-start'}`}>
       <div
-        className={`max-w-[82%] px-3 py-2.5 text-body leading-relaxed whitespace-pre-wrap rounded-none ${
+        className={`max-w-[82%] px-3 py-2.5 text-body leading-relaxed rounded-none ${
           isUser
             ? 'bg-brand-yellow text-brand-dark font-medium'
             : 'bg-zinc-800 text-zinc-200 border-l-2 border-zinc-700'
         }`}
       >
-        {msg.content}
+        <MessageContent text={msg.content} />
       </div>
 
       {msg.imageLine && messengerUrl && (

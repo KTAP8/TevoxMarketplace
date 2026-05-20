@@ -18,7 +18,7 @@ function useStats() {
         { count: installCount },
       ] = await Promise.all([
         supabase.from('products').select('*', { count: 'exact', head: true }).neq('status', 'coming_soon'),
-        supabase.from('installs').select('car_model').eq('is_approved', true),
+        supabase.from('products').select('car_model').neq('status', 'coming_soon'),
         supabase.from('installs').select('*', { count: 'exact', head: true }).eq('is_approved', true),
       ])
       const uniqueModels = new Set(carModelRows?.map(r => r.car_model) ?? []).size
@@ -202,10 +202,6 @@ export default function Home({ onChatOpen }) {
             </button>
           </div>
 
-          {/* Car model label */}
-          <p className="mt-12 font-mono text-micro text-zinc-700 tracking-[0.2em] uppercase animate-fade-up-3">
-            [ MG IM6 · BYD Seal · Tesla Model 3 · และอื่นๆ ]
-          </p>
         </div>
 
         {/* Stats strip */}
