@@ -7,13 +7,6 @@ import { useSettings } from '../hooks/useSettings'
 import Badge from '../components/ui/Badge'
 import Button from '../components/ui/Button'
 
-const SPEC_LABELS = {
-  material:      'วัสดุ',
-  weight_kg:     'น้ำหนัก',
-  color_options: 'ตัวเลือกสี',
-  size:          'ขนาด',
-  pcd:           'PCD',
-}
 
 function useCountdown(closesAt) {
   const [timeLeft, setTimeLeft] = useState(null)
@@ -77,25 +70,29 @@ function ImageGallery({ imageKeys }) {
   )
 }
 
-function SpecsTable({ specs }) {
-  if (!specs || !Object.keys(specs).length) return null
+function DetailsTable({ product }) {
+  const rows = [
+    product.material          && { label: 'วัสดุ',        value: product.material },
+    product.includes          && { label: 'ในกล่อง',      value: product.includes },
+    product.installation_time && { label: 'เวลาติดตั้ง',  value: product.installation_time },
+    product.installation_price && {
+      label: 'ค่าติดตั้ง',
+      value: `฿${Number(product.installation_price).toLocaleString('th-TH')} (รวม ฿${(Number(product.price_thb) + Number(product.installation_price)).toLocaleString('th-TH')})`,
+    },
+  ].filter(Boolean)
+
+  if (!rows.length) return null
   return (
-    <div className="flex flex-col gap-3 border border-zinc-200 bg-white p-4">
-      <p className="font-mono text-micro text-zinc-400 tracking-[0.15em] uppercase pb-3 border-b border-zinc-100">
-        [ SPECIFICATIONS ]
+    <div className="flex flex-col gap-0 border border-zinc-200 bg-white">
+      <p className="font-mono text-micro text-zinc-400 tracking-[0.15em] uppercase px-4 py-3 border-b border-zinc-100">
+        [ PRODUCT DETAILS ]
       </p>
-      <div className="flex flex-col">
-        {Object.entries(specs).map(([key, val]) => (
-          <div key={key} className="flex items-start gap-4 py-2.5 border-b border-zinc-100 last:border-0">
-            <span className="font-mono text-micro text-zinc-400 tracking-wider uppercase w-28 shrink-0 pt-0.5">
-              {SPEC_LABELS[key] ?? key}
-            </span>
-            <span className="font-mono text-caption text-brand-dark tabular-nums">
-              {Array.isArray(val) ? val.join(' / ') : String(val)}
-            </span>
-          </div>
-        ))}
-      </div>
+      {rows.map(({ label, value }) => (
+        <div key={label} className="flex items-start gap-4 px-4 py-2.5 border-b border-zinc-100 last:border-0">
+          <span className="font-mono text-micro text-zinc-400 tracking-wider w-28 shrink-0 pt-0.5">{label}</span>
+          <span className="font-mono text-caption text-brand-dark">{value}</span>
+        </div>
+      ))}
     </div>
   )
 }
@@ -178,8 +175,8 @@ export default function ProductDetail() {
               </p>
             )}
 
-            {/* Specs */}
-            <SpecsTable specs={product.specs} />
+            {/* Product details */}
+            <DetailsTable product={product} />
 
             {/* Fitment note */}
             {product.fitment_notes_th && (
