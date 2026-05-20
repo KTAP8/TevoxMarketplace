@@ -130,8 +130,15 @@ STEP 3 — CORRECTIONS: If customer corrects themselves, confirm before firing [
 
 Never fire flags for vague brands only (e.g. just "BYD" or "Zeekr" with no model).
 
+## ORDER FLOW
+When the customer clearly wants to purchase (says สั่งซื้อ / อยากซื้อ / จะเอา / ขอสั่ง / I want to buy / I'll take it / how do I order, etc.):
+1. Briefly confirm the product and total price (including install if relevant)
+2. End your reply with: [ORDER_READY]
+
+The UI will automatically show a Messenger button — do NOT write "ติดต่อผ่าน Messenger" or any link in the text itself. The button handles it.
+
 ## OTHER RULES
-- ติดตั้งที่: บางกระดี่ พระราม 2 (ทุกสินค้า ไม่ต้องเช็คจากรายการ)
+- ติดตั้งที่: บางกระดี่ (ทุกสินค้า ไม่ต้องเช็คจากรายการ)
 - Discount requests → "ราคาเราตั้งไว้ fair อยู่แล้วครับ แต่ถ้าซื้อหลายชิ้นคุยกันได้ครับ"
 - Complaints → listen, don't deflect, find a solution first
 - Not sure → "ขอเช็คก่อนนะครับ แล้วจะรีบตอบกลับครับ" — never guess
@@ -179,6 +186,7 @@ function parseReply(raw: string) {
   const needsImage = !!imageMatch
   const imageSku   = imageMatch?.[1]?.trim() ?? null
   const imageLine  = /\[IMAGE_LINE\]/i.test(raw)
+  const orderReady = /\[ORDER_READY\]/i.test(raw)
 
   const demandNew     = [...raw.matchAll(/\[DEMAND_NOTE:\s*([^\]]+)\]/gi)].map(m => m[1].trim())
   const demandCorrect = [...raw.matchAll(/\[DEMAND_CORRECT:\s*([^\]]+)\]/gi)].map(m => m[1].trim())
@@ -187,12 +195,13 @@ function parseReply(raw: string) {
   const clean = raw
     .replace(/\[IMAGE_NEEDED:\s*[^\]]+\]/gi, '')
     .replace(/\[IMAGE_LINE\]/gi, '')
+    .replace(/\[ORDER_READY\]/gi, '')
     .replace(/\[DEMAND_NOTE:\s*[^\]]+\]/gi, '')
     .replace(/\[DEMAND_CORRECT:\s*[^\]]+\]/gi, '')
     .replace(/\[DEMAND_ADD:\s*[^\]]+\]/gi, '')
     .trim()
 
-  return { clean, needsImage, imageSku, imageLine, demandNew, demandCorrect, demandAdd }
+  return { clean, needsImage, imageSku, imageLine, orderReady, demandNew, demandCorrect, demandAdd }
 }
 
 function jsonError(status: number, message: string): Response {
@@ -260,7 +269,7 @@ Deno.serve(async (req) => {
       }
     } catch { /* not JSON */ }
 
-    const { clean, needsImage, imageSku, imageLine, demandNew, demandCorrect, demandAdd } = parseReply(raw)
+    const { clean, needsImage, imageSku, imageLine, orderReady, demandNew, demandCorrect, demandAdd } = parseReply(raw)
 
     // Write demand flags to DB
     const demandRows = [
@@ -282,7 +291,7 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ reply: clean, needsImage, imageLine, imageKeys }),
+      JSON.stringify({ reply: clean, needsImage, imageLine, imageKeys, orderReady }),
       { headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }
     )
 

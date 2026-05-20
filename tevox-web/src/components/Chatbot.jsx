@@ -88,11 +88,28 @@ function ImagesBubble({ imageKeys }) {
   )
 }
 
+function MessengerCTA({ url }) {
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex items-center gap-2.5 bg-brand-yellow text-brand-dark px-4 py-3 font-mono text-caption font-bold tracking-wider hover:brightness-105 transition-all self-start"
+    >
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 2C6.477 2 2 6.477 2 12c0 3.062 1.445 5.791 3.712 7.569L5.75 22l2.475-1.344A9.908 9.908 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm1.07 13.024l-2.551-2.72-4.979 2.718 5.477-5.817 2.613 2.72 4.916-2.72-5.476 5.819z" />
+      </svg>
+      สั่งซื้อผ่าน Messenger
+    </a>
+  )
+}
+
 function ChatBubble({ msg, messengerUrl }) {
   return (
     <div className={`flex flex-col gap-2 ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
       <TextBubble msg={msg} messengerUrl={messengerUrl} />
       {msg.type === 'images' && <ImagesBubble imageKeys={msg.imageKeys} />}
+      {msg.orderReady && messengerUrl && <MessengerCTA url={messengerUrl} />}
     </div>
   )
 }
@@ -199,14 +216,15 @@ export default function Chatbot({ isOpen, onClose }) {
       })
       if (error) throw error
 
-      const { reply, needsImage, imageLine, imageKeys } = data
+      const { reply, needsImage, imageLine, imageKeys, orderReady } = data
 
       setMessages(prev => [...prev, {
-        role:      'assistant',
-        content:   reply,
-        type:      needsImage && imageKeys?.length ? 'images' : 'text',
-        imageKeys: needsImage ? imageKeys : undefined,
-        imageLine: !!imageLine,
+        role:       'assistant',
+        content:    reply,
+        type:       needsImage && imageKeys?.length ? 'images' : 'text',
+        imageKeys:  needsImage ? imageKeys : undefined,
+        imageLine:  !!imageLine,
+        orderReady: !!orderReady,
       }])
     } catch {
       setMessages(prev => [...prev, {
