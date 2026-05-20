@@ -177,8 +177,8 @@ export default function Chatbot({ isOpen, onClose }) {
 
         {/* Backdrop (mobile only) */}
         <div
-          className={`absolute inset-0 bg-black/60 pointer-events-auto transition-opacity duration-300 md:hidden ${
-            isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+          className={`absolute inset-0 bg-black/60 transition-opacity duration-300 md:hidden ${
+            isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
           }`}
           onClick={onClose}
         />
