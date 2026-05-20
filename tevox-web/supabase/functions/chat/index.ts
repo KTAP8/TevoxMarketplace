@@ -6,7 +6,59 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Headers': 'authorization, content-type, x-client-info, apikey',
 }
 
-async function callDeepSeek(messages: { role: string; content: string }[]) {
+// ── Rate limiting (in-memory, per-instance) ───────────────────────────────────
+
+const RATE_WINDOW_MS = 60_000  // 1 minute
+const RATE_MAX       = 20      // requests per IP per window
+
+const rateLimitStore = new Map<string, number[]>()
+
+function getClientIp(req: Request): string {
+  return (
+    req.headers.get('x-forwarded-for')?.split(',')[0].trim() ??
+    req.headers.get('x-real-ip') ??
+    'unknown'
+  )
+}
+
+function isRateLimited(ip: string): boolean {
+  const now  = Date.now()
+  const hits = (rateLimitStore.get(ip) ?? []).filter(t => now - t < RATE_WINDOW_MS)
+  if (hits.length >= RATE_MAX) return true
+  hits.push(now)
+  rateLimitStore.set(ip, hits)
+  return false
+}
+
+// ── Input validation ──────────────────────────────────────────────────────────
+
+const MAX_MESSAGES      = 40    // full conversation cap
+const MAX_CONTENT_CHARS = 2000  // per message
+const VALID_ROLES       = new Set(['user', 'assistant'])
+
+type ChatMessage = { role: string; content: string }
+
+function validateMessages(raw: unknown): ChatMessage[] | null {
+  if (!Array.isArray(raw) || raw.length === 0 || raw.length > MAX_MESSAGES) return null
+
+  for (const msg of raw) {
+    if (typeof msg !== 'object' || msg === null)              return null
+    if (typeof msg.role    !== 'string')                      return null
+    if (typeof msg.content !== 'string')                      return null
+    if (!VALID_ROLES.has(msg.role))                           return null
+    if (msg.content.length === 0)                             return null
+    if (msg.content.length > MAX_CONTENT_CHARS)               return null
+  }
+
+  // Conversation must end with a user turn
+  if (raw[raw.length - 1].role !== 'user') return null
+
+  return raw as ChatMessage[]
+}
+
+// ── DeepSeek ──────────────────────────────────────────────────────────────────
+
+async function callDeepSeek(messages: ChatMessage[]) {
   const res = await fetch('https://api.deepseek.com/chat/completions', {
     method: 'POST',
     headers: {
@@ -26,6 +78,8 @@ async function callDeepSeek(messages: { role: string; content: string }[]) {
   const data = await res.json()
   return data.choices[0].message.content ?? ''
 }
+
+// ── Supabase client ───────────────────────────────────────────────────────────
 
 const supabase = createClient(
   Deno.env.get('SUPABASE_URL')!,
@@ -141,19 +195,39 @@ function parseReply(raw: string) {
   return { clean, needsImage, imageSku, imageLine, demandNew, demandCorrect, demandAdd }
 }
 
+function jsonError(status: number, message: string): Response {
+  return new Response(
+    JSON.stringify({ error: message }),
+    { status, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } },
+  )
+}
+
 // ── Handler ───────────────────────────────────────────────────────────────────
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: CORS_HEADERS })
-  if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-      status: 405, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
-    })
+  if (req.method !== 'POST')   return jsonError(405, 'Method not allowed')
+
+  // Rate limit
+  const ip = getClientIp(req)
+  if (isRateLimited(ip)) return jsonError(429, 'Too many requests — please slow down')
+
+  // Body size guard (prevent giant payloads before parsing)
+  const contentLength = parseInt(req.headers.get('content-length') ?? '0', 10)
+  if (contentLength > 50_000) return jsonError(413, 'Request too large')
+
+  let body: Record<string, unknown>
+  try {
+    body = await req.json()
+  } catch {
+    return jsonError(400, 'Invalid JSON')
   }
 
-  try {
-    const { messages } = await req.json()
+  // Validate messages
+  const messages = validateMessages(body.messages)
+  if (!messages) return jsonError(400, 'Invalid messages: must be a non-empty array of up to 40 {role, content} pairs, last message must be from user, each content max 2000 chars')
 
+  try {
     const { data: products } = await supabase
       .from('products')
       .select('sku, name_th, car_model, category, price_thb, status, installation_price, includes, material, installation_time, fitment_notes_th')
@@ -163,7 +237,7 @@ Deno.serve(async (req) => {
 
     const raw = await callDeepSeek([
       { role: 'system', content: systemPrompt },
-      ...messages.map((m: { role: string; content: string }) => ({
+      ...messages.map(m => ({
         role:    m.role === 'assistant' ? 'assistant' : 'user',
         content: m.content,
       })),
@@ -215,9 +289,6 @@ Deno.serve(async (req) => {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     console.error('chat error:', msg)
-    return new Response(
-      JSON.stringify({ error: msg }),
-      { status: 500, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }
-    )
+    return jsonError(500, 'Internal server error')
   }
 })
