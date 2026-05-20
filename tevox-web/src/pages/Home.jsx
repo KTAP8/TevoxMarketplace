@@ -6,6 +6,7 @@ import { useProducts } from '../hooks/useProducts'
 import { useInstalls } from '../hooks/useInstalls'
 import ProductCard from '../components/ui/ProductCard'
 import Button from '../components/ui/Button'
+import HeroSearch from '../components/HeroSearch'
 
 function useStats() {
   const [stats, setStats] = useState({ products: 0, carModels: 0, installs: 0 })
@@ -30,9 +31,9 @@ function useStats() {
 
 function WaitlistModal({ onClose }) {
   const [carModels, setCarModels] = useState([])
-  const [form, setForm]           = useState({ name: '', line_id: '', car_model: '' })
+  const [form, setForm] = useState({ name: '', line_id: '', car_model: '' })
   const [submitted, setSubmitted] = useState(false)
-  const [loading, setLoading]     = useState(false)
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     supabase.from('products').select('car_model').then(({ data }) => {
@@ -63,7 +64,7 @@ function WaitlistModal({ onClose }) {
           <div className="py-8 flex flex-col items-center gap-4">
             <div className="w-12 h-12 bg-brand-dark flex items-center justify-center">
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                <polyline points="2,10 8,16 18,4" stroke="#E9FF22" strokeWidth="2" strokeLinecap="square" strokeLinejoin="miter"/>
+                <polyline points="2,10 8,16 18,4" stroke="#E9FF22" strokeWidth="2" strokeLinecap="square" strokeLinejoin="miter" />
               </svg>
             </div>
             <div className="text-center">
@@ -121,7 +122,7 @@ function WaitlistModal({ onClose }) {
 function SectionLabel({ index, label }) {
   return (
     <div className="flex items-center gap-3 mb-3">
-      <span className="font-mono text-micro text-zinc-400 tabular-nums">[ {String(index).padStart(2,'0')} ]</span>
+      <span className="font-mono text-micro text-zinc-400 tabular-nums">[ {String(index).padStart(2, '0')} ]</span>
       <div className="h-px w-8 bg-zinc-300" />
       <span className="font-mono text-micro text-zinc-400 tracking-[0.15em] uppercase">{label}</span>
     </div>
@@ -132,15 +133,15 @@ export default function Home({ onChatOpen }) {
   const [waitlistOpen, setWaitlistOpen] = useState(false)
   const stats = useStats()
   const { products } = useProducts({ excludeStatus: 'coming_soon' })
-  const { installs }  = useInstalls({ limit: 6 })
-  const featured      = products.slice(0, 3)
+  const { installs } = useInstalls({ limit: 6 })
+  const featured = products.slice(0, 3)
 
   return (
     <div className="flex flex-col">
 
       {/* ── Hero (dark) ── */}
       <section className="relative bg-brand-dark bg-dot-pattern overflow-hidden" style={{ minHeight: '92vh' }}>
-        <div className="relative z-10 max-w-7xl mx-auto min-h-[92vh] grid grid-cols-1 md:grid-cols-[1fr_440px] lg:grid-cols-[1fr_540px] items-stretch">
+        <div className="relative z-20 max-w-7xl mx-auto min-h-[92vh] grid grid-cols-1 md:grid-cols-[1fr_440px] lg:grid-cols-[1fr_540px] items-stretch">
 
           {/* Left: text */}
           <div className="flex flex-col justify-center px-6 md:px-12 lg:px-16 py-28 md:py-20">
@@ -159,11 +160,14 @@ export default function Home({ onChatOpen }) {
                 ไม่แพ้รถน้ำมัน
               </span>
             </h1>
-            <p className="animate-fade-up-3 text-zinc-500 text-body max-w-sm mb-10 leading-relaxed">
+            <p className="animate-fade-up-3 text-zinc-500 text-body max-w-sm mb-8 leading-relaxed">
               Built by Engineers, Driven by Passion
             </p>
+            <div className="animate-fade-up-3 mb-6 relative z-40">
+              <HeroSearch products={products} onChatOpen={onChatOpen} />
+            </div>
             <div className="animate-fade-up-3 flex flex-wrap gap-3">
-              <Link to="/products"><Button variant="primary" size="lg">ดูสินค้า</Button></Link>
+              <Link to="/products"><Button variant="secondary" size="lg">ดูสินค้าทั้งหมด</Button></Link>
               <Button variant="secondary" size="lg" onClick={() => setWaitlistOpen(true)}>แจ้งเตือน</Button>
             </div>
           </div>
@@ -187,9 +191,9 @@ export default function Home({ onChatOpen }) {
         <div className="relative z-10 border-t border-zinc-800 bg-brand-dark/90 backdrop-blur-sm">
           <div className="max-w-7xl mx-auto px-6 py-5 grid grid-cols-3 divide-x divide-zinc-800">
             {[
-              { value: stats.products,  label: 'สินค้า' },
+              { value: stats.products, label: 'สินค้า' },
               { value: stats.carModels, label: 'รุ่นรถ' },
-              { value: stats.installs,  label: 'ติดตั้งแล้ว' },
+              { value: stats.installs, label: 'ติดตั้งแล้ว' },
             ].map(({ value, label }) => (
               <div key={label} className="flex flex-col items-center gap-1 px-4">
                 <span className="font-mono font-bold text-h2 text-brand-yellow tabular-nums">{value}</span>
