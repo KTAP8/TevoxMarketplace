@@ -1,16 +1,19 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
+import { r2Url } from '../lib/r2'
 import { useSettings } from '../hooks/useSettings'
 
 const OPENING_MESSAGE = {
-  role: 'assistant',
-  content: 'สวัสดีครับ ผมช่วยคุณหาชิ้นส่วนแต่งสำหรับรถ EV ของคุณได้เลย\nรถคุณรุ่นอะไรครับ?',
+  role:    'assistant',
+  content: 'สวัสดีครับ ผม Nox ครับบ มีอะไรให้ช่วยได้เลย 👋\nรถคุณรุ่นอะไรครับ?',
 }
 
-function ChatBubble({ msg }) {
+// ── Bubble components ─────────────────────────────────────────────────────────
+
+function TextBubble({ msg, messengerUrl }) {
   const isUser = msg.role === 'user'
   return (
-    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
+    <div className={`flex flex-col gap-2 ${isUser ? 'items-end' : 'items-start'}`}>
       <div
         className={`max-w-[82%] px-3 py-2.5 text-body leading-relaxed whitespace-pre-wrap rounded-none ${
           isUser
@@ -20,6 +23,50 @@ function ChatBubble({ msg }) {
       >
         {msg.content}
       </div>
+
+      {/* LINE CTA — shown below text when imageLine is true */}
+      {msg.imageLine && messengerUrl && (
+        <a
+          href={messengerUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-mono text-micro text-brand-yellow tracking-wider hover:underline self-start ml-0.5"
+        >
+          → ส่งรูปรถมาให้เราดูผ่าน Messenger ได้เลยครับ
+        </a>
+      )}
+    </div>
+  )
+}
+
+function ImagesBubble({ imageKeys }) {
+  if (!imageKeys?.length) return null
+  return (
+    <div className="flex gap-2 overflow-x-auto pb-1 max-w-[90%]">
+      {imageKeys.map((key, i) => (
+        <a
+          key={i}
+          href={r2Url(key)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="shrink-0 w-28 h-28 bg-zinc-800 overflow-hidden border border-zinc-700 hover:border-brand-yellow transition-colors"
+        >
+          <img
+            src={r2Url(key)}
+            alt={`รูปสินค้า ${i + 1}`}
+            className="w-full h-full object-cover"
+          />
+        </a>
+      ))}
+    </div>
+  )
+}
+
+function ChatBubble({ msg, messengerUrl }) {
+  return (
+    <div className={`flex flex-col gap-2 ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+      <TextBubble msg={msg} messengerUrl={messengerUrl} />
+      {msg.type === 'images' && <ImagesBubble imageKeys={msg.imageKeys} />}
     </div>
   )
 }
@@ -56,6 +103,8 @@ function ChatOpenIcon() {
   )
 }
 
+// ── Main component ────────────────────────────────────────────────────────────
+
 export default function Chatbot({ isOpen, onClose }) {
   const [messages, setMessages] = useState([OPENING_MESSAGE])
   const [input, setInput]       = useState('')
@@ -75,21 +124,37 @@ export default function Chatbot({ isOpen, onClose }) {
   async function send() {
     const text = input.trim()
     if (!text || loading) return
+
     const userMsg = { role: 'user', content: text }
     const history = [...messages, userMsg]
     setMessages(history)
     setInput('')
     setLoading(true)
+
     try {
       const { data, error } = await supabase.functions.invoke('chat', {
-        body: { messages: history.map(m => ({ role: m.role, content: m.content })) },
+        body: {
+          // Only send role + content — strip display-only fields
+          messages: history.map(m => ({ role: m.role, content: m.content })),
+        },
       })
       if (error) throw error
-      setMessages(prev => [...prev, { role: 'assistant', content: data.reply }])
+
+      const { reply, needsImage, imageLine, imageKeys } = data
+
+      const assistantMsg = {
+        role:      'assistant',
+        content:   reply,
+        type:      needsImage && imageKeys?.length ? 'images' : 'text',
+        imageKeys: needsImage ? imageKeys : undefined,
+        imageLine: !!imageLine,
+      }
+
+      setMessages(prev => [...prev, assistantMsg])
     } catch {
       setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: 'ขออภัยครับ เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง หรือติดต่อเราผ่าน Facebook Messenger โดยตรงครับ',
+        role:    'assistant',
+        content: 'ขออภัยครับ เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง หรือติดต่อเราผ่าน Messenger โดยตรงครับ',
       }])
     } finally {
       setLoading(false)
@@ -129,8 +194,8 @@ export default function Chatbot({ isOpen, onClose }) {
               <div className="flex items-center gap-3">
                 <div className="w-1.5 h-1.5 bg-emerald-400 animate-pulse" />
                 <div>
-                  <p className="font-mono text-caption text-zinc-100 tracking-wider">TEVOX // ASSIST</p>
-                  <p className="font-mono text-micro text-zinc-600 tracking-wider">ผู้ช่วยหาชิ้นส่วนแต่งรถ EV</p>
+                  <p className="font-mono text-caption text-zinc-100 tracking-wider">NOX <span className="text-zinc-600">// TEVOX</span></p>
+                  <p className="font-mono text-micro text-zinc-600 tracking-wider">AI ผู้ช่วยหาชิ้นส่วนแต่งรถ EV</p>
                 </div>
               </div>
               <button
@@ -143,7 +208,9 @@ export default function Chatbot({ isOpen, onClose }) {
 
             {/* Messages */}
             <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3">
-              {messages.map((msg, i) => <ChatBubble key={i} msg={msg} />)}
+              {messages.map((msg, i) => (
+                <ChatBubble key={i} msg={msg} messengerUrl={settings.messenger_url} />
+              ))}
               {loading && <TypingIndicator />}
               <div ref={bottomRef} />
             </div>
