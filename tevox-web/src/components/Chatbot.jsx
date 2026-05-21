@@ -152,10 +152,32 @@ export default function Chatbot({ isOpen, onClose }) {
   const [messages, setMessages] = useState([OPENING_MESSAGE])
   const [input, setInput]       = useState('')
   const [loading, setLoading]   = useState(false)
+  const [panelWidth, setPanelWidth] = useState(380)
   const bottomRef               = useRef(null)
   const inputRef                = useRef(null)
   const panelRef                = useRef(null)
   const { settings }            = useSettings()
+
+  function onResizeStart(e) {
+    if (window.innerWidth < 768) return
+    e.preventDefault()
+    const startX     = e.clientX
+    const startWidth = panelWidth
+    function onMove(ev) {
+      const newWidth = Math.max(280, Math.min(680, startWidth + (startX - ev.clientX)))
+      setPanelWidth(newWidth)
+    }
+    function onUp() {
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+  }
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -267,18 +289,27 @@ export default function Chatbot({ isOpen, onClose }) {
       <div
         ref={panelRef}
         aria-hidden={!isOpen}
+        style={{ width: panelWidth }}
         className={`
           fixed z-50 flex flex-col bg-brand-dark
           transition-transform duration-300 ease-out
           ${isOpen ? 'pointer-events-auto' : 'pointer-events-none'}
           inset-x-0 top-0 bottom-0
-          md:left-auto md:inset-y-0 md:w-[380px] md:border-l md:border-zinc-800
+          md:left-auto md:inset-y-0 md:border-l md:border-zinc-800
           ${isOpen
             ? 'translate-y-0 md:translate-x-0'
             : 'translate-y-full md:translate-y-0 md:translate-x-full'
           }
         `}
       >
+        {/* Resize handle — desktop only */}
+        <div
+          onMouseDown={onResizeStart}
+          className="hidden md:flex absolute left-0 top-0 bottom-0 w-3 -translate-x-1.5 cursor-col-resize items-center justify-center group z-10"
+        >
+          <div className="w-0.5 h-10 bg-zinc-700 rounded-full group-hover:bg-brand-yellow/60 transition-colors" />
+        </div>
+
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800 shrink-0">
           <div className="flex items-center gap-3">
@@ -295,6 +326,13 @@ export default function Chatbot({ isOpen, onClose }) {
           >
             [ ปิด ]
           </button>
+        </div>
+
+        {/* AI disclaimer */}
+        <div className="px-4 py-2 border-b border-zinc-800/50 shrink-0">
+          <p className="font-mono text-zinc-700 tracking-wider text-center" style={{ fontSize: 10 }}>
+            คุณกำลังคุยกับ AI · ประวัติแชทจะหายไปเมื่อรีเฟรชหน้า
+          </p>
         </div>
 
         {/* Messages */}
