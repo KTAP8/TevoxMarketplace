@@ -12,13 +12,14 @@ const OPENING_MESSAGE = {
 
 function renderInline(text) {
   const segments = []
-  const regex = /\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`/g
+  const regex = /\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`|\[([^\]]+)\]\(([^)]+)\)/g
   let last = 0, m
   while ((m = regex.exec(text)) !== null) {
     if (m.index > last) segments.push({ t: 'text', v: text.slice(last, m.index) })
     if (m[1] !== undefined)      segments.push({ t: 'bold',   v: m[1] })
     else if (m[2] !== undefined) segments.push({ t: 'italic', v: m[2] })
-    else                         segments.push({ t: 'code',   v: m[3] })
+    else if (m[3] !== undefined) segments.push({ t: 'code',   v: m[3] })
+    else                         segments.push({ t: 'link',   v: m[4], href: m[5] })
     last = m.index + m[0].length
   }
   if (last < text.length) segments.push({ t: 'text', v: text.slice(last) })
@@ -26,6 +27,7 @@ function renderInline(text) {
     if (s.t === 'bold')   return <strong key={i} className="font-bold">{s.v}</strong>
     if (s.t === 'italic') return <em key={i} className="italic">{s.v}</em>
     if (s.t === 'code')   return <code key={i} className="bg-zinc-700/60 px-1 font-mono text-brand-yellow text-sm">{s.v}</code>
+    if (s.t === 'link')   return <a key={i} href={s.href} target="_blank" rel="noopener noreferrer" className="text-brand-yellow underline underline-offset-2 hover:brightness-110 transition-all">{s.v}</a>
     return s.v
   })
 }

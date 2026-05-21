@@ -137,6 +137,10 @@ When the customer clearly wants to purchase (says สั่งซื้อ / อ
 
 The UI will automatically show a Messenger button — do NOT write "ติดต่อผ่าน Messenger" or any link in the text itself. The button handles it.
 
+## PRODUCT LINKS
+Each product has a ลิงค์ field. When a customer asks about a specific product (price, details, fitment, photos), include the link once at the end of your reply using markdown: [ดูรายละเอียด](/products/ID)
+Don't repeat the link in follow-up messages in the same conversation unless they ask again.
+
 ## OTHER RULES
 - ติดตั้งที่: บางกระดี่ (ทุกสินค้า ไม่ต้องเช็คจากรายการ)
 - Discount requests → "ราคาเราตั้งไว้ fair อยู่แล้วครับ แต่ถ้าซื้อหลายชิ้นคุยกันได้ครับ"
@@ -175,6 +179,7 @@ function buildSystemPrompt(products: any[]): string {
       : p.status === 'sold_out' ? 'หมดแล้ว'
       : 'เร็วๆ นี้'
     lines.push(`- สถานะ: ${statusLabel}`)
+    lines.push(`- ลิงค์: /products/${p.id}`)
     return lines.join('\n')
   }).join('\n\n')
 
@@ -239,7 +244,7 @@ Deno.serve(async (req) => {
   try {
     const { data: products } = await supabase
       .from('products')
-      .select('sku, name_th, car_model, category, price_thb, status, installation_price, includes, material, installation_time, fitment_notes_th')
+      .select('id, sku, name_th, car_model, category, price_thb, status, installation_price, includes, material, installation_time, fitment_notes_th')
       .neq('status', 'coming_soon')
 
     const systemPrompt = buildSystemPrompt(products ?? [])
