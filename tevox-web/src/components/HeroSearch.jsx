@@ -172,8 +172,8 @@ export default function HeroSearch({ products, suggestions = [], onChatOpen }) {
     <div ref={containerRef} className="relative w-full">
 
       {/* Input */}
-      <div className="relative flex items-center">
-        <span className="absolute left-4 text-zinc-600 pointer-events-none">
+      <div className="relative flex items-center group">
+        <span className="absolute left-5 text-zinc-500 pointer-events-none group-focus-within:text-brand-yellow transition-colors">
           <SearchIcon />
         </span>
         <input
@@ -183,7 +183,7 @@ export default function HeroSearch({ products, suggestions = [], onChatOpen }) {
           onChange={e => setQuery(e.target.value)}
           placeholder="พิมพ์รุ่นรถ หรืออะไรที่อยากแต่ง..."
           style={{ fontSize: 16 }}
-          className="w-full bg-zinc-900 border border-zinc-700 focus:border-brand-yellow pl-11 pr-12 py-4 text-zinc-100 placeholder-zinc-600 focus:outline-none font-mono text-caption tracking-wide transition-colors"
+          className="w-full bg-zinc-900/60 backdrop-blur-xl border border-zinc-700/80 hover:border-zinc-500 focus:border-brand-yellow/80 focus:ring-4 focus:ring-brand-yellow/10 pl-12 pr-12 py-5 text-zinc-100 placeholder-zinc-500 focus:outline-none font-mono text-body tracking-wide transition-all shadow-2xl rounded-lg"
         />
         {query ? (
           <button
@@ -202,12 +202,12 @@ export default function HeroSearch({ products, suggestions = [], onChatOpen }) {
 
       {/* Suggestion pills — shown when input is empty */}
       {!query && suggestions.length > 0 && (
-        <div className="flex flex-wrap gap-2 mt-3">
+        <div className="flex flex-wrap gap-2 mt-4">
           {suggestions.map(s => (
             <button
               key={s}
               onClick={() => { setQuery(s); inputRef.current?.focus() }}
-              className="font-mono text-micro text-zinc-500 border border-zinc-800 hover:border-brand-yellow hover:text-brand-yellow px-3 py-1.5 transition-colors tracking-wider"
+              className="font-mono text-micro text-zinc-400 bg-zinc-900/40 backdrop-blur-md border border-zinc-700/60 hover:border-brand-yellow hover:text-brand-yellow hover:bg-brand-yellow/5 px-4 py-2 transition-all duration-300 tracking-wider rounded-lg shadow-sm hover:shadow-brand-yellow/10 hover:-translate-y-0.5"
             >
               {s}
             </button>
@@ -217,7 +217,7 @@ export default function HeroSearch({ products, suggestions = [], onChatOpen }) {
 
       {/* Results panel */}
       {showPanel && (
-        <div className="absolute top-full left-0 right-0 z-30 bg-zinc-900 border border-zinc-700 border-t-0 shadow-2xl max-h-[360px] overflow-y-auto">
+        <div className="absolute top-full left-0 right-0 z-30 mt-2 bg-zinc-900/95 backdrop-blur-2xl border border-zinc-700/80 shadow-2xl max-h-[400px] overflow-y-auto rounded-lg">
 
           {loading && (
             <div className="px-4 py-4 flex items-center gap-3">

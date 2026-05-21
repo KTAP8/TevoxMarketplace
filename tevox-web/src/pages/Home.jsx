@@ -145,37 +145,37 @@ export default function Home({ onChatOpen }) {
     <div className="flex flex-col">
 
       {/* ── Hero (dark, search-centric) ── */}
-      <section className="relative bg-brand-dark overflow-hidden" style={{ minHeight: '88vh' }}>
+      <section className="relative bg-brand-dark overflow-hidden flex flex-col" style={{ minHeight: '90vh' }}>
 
-        {/* Background car image */}
+        {/* Background car image & Effects */}
         <img
           src="https://pub-8e41e2b3a9c54834a89b577b2c07cb83.r2.dev/heroCarImg.png"
           alt=""
           aria-hidden="true"
-          className="absolute inset-0 w-full h-full object-cover object-center opacity-20 pointer-events-none select-none"
+          className="absolute inset-0 w-full h-full object-cover object-center opacity-30 pointer-events-none select-none mix-blend-luminosity scale-105 animate-[pulse_10s_ease-in-out_infinite]"
         />
         {/* Gradient overlays */}
-        <div className="absolute inset-0 bg-gradient-to-b from-brand-dark/60 via-transparent to-brand-dark pointer-events-none" />
-        <div className="absolute inset-0 bg-gradient-to-r from-brand-dark/40 via-transparent to-brand-dark/40 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-b from-brand-dark/80 via-brand-dark/50 to-brand-dark pointer-events-none" />
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-brand-yellow/15 rounded-full blur-[140px] pointer-events-none opacity-50" />
 
         {/* Content */}
-        <div className="relative z-10 flex flex-col items-center justify-center min-h-[88vh] px-6 py-20 text-center">
+        <div className="relative z-30 flex flex-col items-center justify-center flex-1 px-6 py-20 mt-12 text-center">
 
           {/* Eyebrow */}
           <div className="flex items-center gap-3 mb-8 animate-fade-up">
-            <div className="h-px w-6 bg-brand-yellow shrink-0" />
-            <span className="font-mono text-micro text-zinc-500 tracking-[0.18em] uppercase">
+            <div className="h-px w-8 bg-brand-yellow/80 shrink-0" />
+            <span className="font-mono text-micro text-brand-yellow/80 tracking-[0.2em] uppercase font-bold">
               EV Aftermarket · Bangkok Thailand
             </span>
-            <div className="h-px w-6 bg-brand-yellow shrink-0" />
+            <div className="h-px w-8 bg-brand-yellow/80 shrink-0" />
           </div>
 
           {/* Headline */}
-          <h1 className="mb-10 animate-fade-up-2">
-            <span className="block font-black text-display text-zinc-100 leading-none">
+          <h1 className="mb-10 animate-fade-up-2 relative">
+            <span className="block font-black text-display text-zinc-100 leading-none drop-shadow-xl">
               หาชิ้นส่วนแต่ง
             </span>
-            <span className="block font-light text-display text-brand-yellow leading-none mt-2">
+            <span className="block font-light text-display text-brand-yellow leading-none mt-2 drop-shadow-xl">
               รถ EV ของคุณ
             </span>
           </h1>
@@ -186,35 +186,37 @@ export default function Home({ onChatOpen }) {
           </div>
 
           {/* Secondary CTAs */}
-          <div className="animate-fade-up-3 flex items-center gap-6 mt-8">
+          <div className="animate-fade-up-4 flex items-center gap-8 mt-10">
             <Link
               to="/products"
-              className="font-mono text-caption text-zinc-400 hover:text-brand-yellow transition-colors tracking-wider border-b border-zinc-700 hover:border-brand-yellow pb-0.5"
+              className="group flex items-center gap-2 font-mono text-caption text-zinc-400 hover:text-brand-yellow transition-all tracking-wider"
             >
-              ดูสินค้าทั้งหมด →
+              <span className="border-b border-zinc-700 group-hover:border-brand-yellow pb-0.5 transition-colors">ดูสินค้าทั้งหมด</span>
+              <span className="group-hover:translate-x-1 transition-transform">→</span>
             </Link>
-            <span className="text-zinc-800">|</span>
+            <span className="text-zinc-700 text-micro">/</span>
             <button
               onClick={() => setWaitlistOpen(true)}
-              className="font-mono text-caption text-zinc-400 hover:text-brand-yellow transition-colors tracking-wider border-b border-zinc-700 hover:border-brand-yellow pb-0.5"
+              className="group flex items-center gap-2 font-mono text-caption text-zinc-400 hover:text-brand-yellow transition-all tracking-wider"
             >
-              แจ้งเตือนสินค้าใหม่
+              <span className="border-b border-zinc-700 group-hover:border-brand-yellow pb-0.5 transition-colors">แจ้งเตือนสินค้าใหม่</span>
+              <span className="group-hover:-translate-y-0.5 transition-transform">↗</span>
             </button>
           </div>
 
         </div>
 
-        {/* Stats strip */}
-        <div className="relative z-10 border-t border-zinc-800 bg-brand-dark/90 backdrop-blur-sm">
-          <div className="max-w-7xl mx-auto px-6 py-5 grid grid-cols-3 divide-x divide-zinc-800">
+        {/* Floating Stats strip */}
+        <div className="relative z-10 w-full max-w-5xl mx-auto px-6 pb-12 animate-fade-up-4">
+          <div className="bg-zinc-900/40 backdrop-blur-xl border border-zinc-700/50 rounded-lg p-6 sm:p-8 grid grid-cols-3 divide-x divide-zinc-700/50 shadow-2xl">
             {[
               { value: stats.products, label: 'สินค้า' },
               { value: stats.carModels, label: 'รุ่นรถ' },
               { value: stats.installs, label: 'ติดตั้งแล้ว' },
             ].map(({ value, label }) => (
-              <div key={label} className="flex flex-col items-center gap-1 px-4">
-                <span className="font-mono font-bold text-h2 text-brand-yellow tabular-nums">{value}</span>
-                <span className="font-mono text-micro text-zinc-600 uppercase tracking-[0.1em]">{label}</span>
+              <div key={label} className="flex flex-col items-center gap-2 px-4 group">
+                <span className="font-mono font-black text-h2 text-brand-yellow tabular-nums group-hover:scale-110 transition-transform duration-300 drop-shadow-md">{value}</span>
+                <span className="font-mono text-micro text-zinc-400 uppercase tracking-[0.15em] group-hover:text-zinc-300 transition-colors">{label}</span>
               </div>
             ))}
           </div>
