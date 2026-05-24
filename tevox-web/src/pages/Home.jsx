@@ -2,15 +2,21 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { r2Url } from '../lib/r2'
+import { cacheGet, cacheSet } from '../lib/cache'
 import { useProducts } from '../hooks/useProducts'
 import { useInstalls } from '../hooks/useInstalls'
 import ProductCard from '../components/ui/ProductCard'
 import Button from '../components/ui/Button'
 import HeroSearch from '../components/HeroSearch'
 
+const STATS_KEY = 'home:stats'
+const STATS_TTL = 5 * 60 * 1000
+
 function useStats() {
-  const [stats, setStats] = useState({ products: 0, carModels: 0, installs: 0 })
+  const [stats, setStats] = useState(() => cacheGet(STATS_KEY) ?? { products: 0, carModels: 0, installs: 0 })
+
   useEffect(() => {
+    if (cacheGet(STATS_KEY)) return
     async function load() {
       const [
         { count: productCount },
@@ -22,7 +28,9 @@ function useStats() {
         supabase.from('installs').select('*', { count: 'exact', head: true }).eq('is_approved', true),
       ])
       const uniqueModels = new Set(carModelRows?.map(r => r.car_model) ?? []).size
-      setStats({ products: productCount ?? 0, carModels: uniqueModels, installs: installCount ?? 0 })
+      const result = { products: productCount ?? 0, carModels: uniqueModels, installs: installCount ?? 0 }
+      cacheSet(STATS_KEY, result, STATS_TTL)
+      setStats(result)
     }
     load()
   }, [])
