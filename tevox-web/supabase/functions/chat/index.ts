@@ -8,9 +8,8 @@ const CORS_HEADERS = {
 
 // ── Rate limiting (in-memory, per-instance) ───────────────────────────────────
 
-const RATE_WINDOW_MS = 60_000  // 1 minute
-const RATE_MAX       = 20      // requests per IP per window
-
+const RATE_WINDOW_MS = 60_000
+const RATE_MAX       = 20
 const rateLimitStore = new Map<string, number[]>()
 
 function getClientIp(req: Request): string {
@@ -32,51 +31,22 @@ function isRateLimited(ip: string): boolean {
 
 // ── Input validation ──────────────────────────────────────────────────────────
 
-const MAX_MESSAGES      = 40    // full conversation cap
-const MAX_CONTENT_CHARS = 2000  // per message
+const MAX_MESSAGES      = 40
+const MAX_CONTENT_CHARS = 2000
 const VALID_ROLES       = new Set(['user', 'assistant'])
 
 type ChatMessage = { role: string; content: string }
 
 function validateMessages(raw: unknown): ChatMessage[] | null {
   if (!Array.isArray(raw) || raw.length === 0 || raw.length > MAX_MESSAGES) return null
-
   for (const msg of raw) {
-    if (typeof msg !== 'object' || msg === null)              return null
-    if (typeof msg.role    !== 'string')                      return null
-    if (typeof msg.content !== 'string')                      return null
-    if (!VALID_ROLES.has(msg.role))                           return null
-    if (msg.content.length === 0)                             return null
-    if (msg.content.length > MAX_CONTENT_CHARS)               return null
+    if (typeof msg !== 'object' || msg === null) return null
+    if (typeof msg.role !== 'string' || typeof msg.content !== 'string') return null
+    if (!VALID_ROLES.has(msg.role)) return null
+    if (msg.content.length === 0 || msg.content.length > MAX_CONTENT_CHARS) return null
   }
-
-  // Conversation must end with a user turn
   if (raw[raw.length - 1].role !== 'user') return null
-
   return raw as ChatMessage[]
-}
-
-// ── DeepSeek ──────────────────────────────────────────────────────────────────
-
-async function callDeepSeek(messages: ChatMessage[]) {
-  const res = await fetch('https://api.deepseek.com/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type':  'application/json',
-      'Authorization': `Bearer ${Deno.env.get('DEEPSEEK_API_KEY')}`,
-    },
-    body: JSON.stringify({
-      model:      'deepseek-v4-pro',
-      max_tokens: 1000,
-      messages,
-    }),
-  })
-  if (!res.ok) {
-    const err = await res.text()
-    throw new Error(`DeepSeek ${res.status}: ${err}`)
-  }
-  const data = await res.json()
-  return data.choices[0].message.content ?? ''
 }
 
 // ── Supabase client ───────────────────────────────────────────────────────────
@@ -170,10 +140,10 @@ function buildSystemPrompt(products: any[]): string {
     if (p.installation_price) {
       lines.push(`- ค่าติดตั้ง: ฿${Number(p.installation_price).toLocaleString()} · รวม: ฿${(Number(p.price_thb) + Number(p.installation_price)).toLocaleString()}`)
     }
-    if (p.material)             lines.push(`- วัสดุ: ${p.material}`)
-    if (p.includes)             lines.push(`- ในกล่อง: ${p.includes}`)
-    if (p.installation_time)    lines.push(`- เวลาติดตั้ง: ${p.installation_time}`)
-    if (p.fitment_notes_th)     lines.push(`- หมายเหตุ: ${p.fitment_notes_th}`)
+    if (p.material)          lines.push(`- วัสดุ: ${p.material}`)
+    if (p.includes)          lines.push(`- ในกล่อง: ${p.includes}`)
+    if (p.installation_time) lines.push(`- เวลาติดตั้ง: ${p.installation_time}`)
+    if (p.fitment_notes_th)  lines.push(`- หมายเหตุ: ${p.fitment_notes_th}`)
     const statusLabel = p.status === 'available' ? 'มีของพร้อม'
       : p.status === 'preorder' ? 'พรีออเดอร์ ~30 วัน'
       : p.status === 'sold_out' ? 'หมดแล้ว'
@@ -222,87 +192,149 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: CORS_HEADERS })
   if (req.method !== 'POST')   return jsonError(405, 'Method not allowed')
 
-  // Rate limit
   const ip = getClientIp(req)
   if (isRateLimited(ip)) return jsonError(429, 'Too many requests — please slow down')
 
-  // Body size guard (prevent giant payloads before parsing)
   const contentLength = parseInt(req.headers.get('content-length') ?? '0', 10)
   if (contentLength > 50_000) return jsonError(413, 'Request too large')
 
   let body: Record<string, unknown>
-  try {
-    body = await req.json()
-  } catch {
-    return jsonError(400, 'Invalid JSON')
-  }
+  try { body = await req.json() }
+  catch { return jsonError(400, 'Invalid JSON') }
 
-  // Validate messages
   const messages = validateMessages(body.messages)
-  if (!messages) return jsonError(400, 'Invalid messages: must be a non-empty array of up to 40 {role, content} pairs, last message must be from user, each content max 2000 chars')
+  if (!messages) return jsonError(400, 'Invalid messages')
 
-  try {
-    const { data: products } = await supabase
-      .from('products')
-      .select('id, sku, name_th, car_model, category, price_thb, status, installation_price, includes, material, installation_time, fitment_notes_th')
-      .neq('status', 'coming_soon')
+  const enc = new TextEncoder()
 
-    const systemPrompt = buildSystemPrompt(products ?? [])
+  const stream = new ReadableStream({
+    async start(controller) {
+      const emit = (obj: unknown) =>
+        controller.enqueue(enc.encode(`data: ${JSON.stringify(obj)}\n\n`))
 
-    const raw = await callDeepSeek([
-      { role: 'system', content: systemPrompt },
-      ...messages.map(m => ({
-        role:    m.role === 'assistant' ? 'assistant' : 'user',
-        content: m.content,
-      })),
-    ])
+      try {
+        // Fetch products
+        const { data: products } = await supabase
+          .from('products')
+          .select('id, sku, name_th, car_model, category, price_thb, status, installation_price, includes, material, installation_time, fitment_notes_th')
+          .neq('status', 'coming_soon')
 
-    // Lead capture — AI returns JSON only
-    try {
-      const parsed = JSON.parse(raw)
-      if (parsed.action === 'capture_lead') {
-        await supabase.from('leads').insert({
-          line_id:   parsed.line_id,
-          car_model: parsed.car_model,
-          interest:  parsed.interest,
-          source:    'chatbot',
+        const systemPrompt = buildSystemPrompt(products ?? [])
+
+        // Call DeepSeek with streaming enabled
+        const dsRes = await fetch('https://api.deepseek.com/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type':  'application/json',
+            'Authorization': `Bearer ${Deno.env.get('DEEPSEEK_API_KEY')}`,
+          },
+          body: JSON.stringify({
+            model:      'deepseek-chat',
+            max_tokens: 800,
+            stream:     true,
+            messages: [
+              { role: 'system', content: systemPrompt },
+              ...messages.map(m => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: m.content })),
+            ],
+          }),
         })
-        return new Response(
-          JSON.stringify({ reply: 'บันทึก Line ID แล้วครับ! จะแจ้งเตือนทันทีที่มีสินค้าให้ครับบ' }),
-          { headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }
-        )
+
+        if (!dsRes.ok) {
+          const err = await dsRes.text()
+          throw new Error(`DeepSeek ${dsRes.status}: ${err}`)
+        }
+
+        const reader  = dsRes.body!.getReader()
+        const dec     = new TextDecoder()
+        let buf       = ''
+        let fullText  = ''
+        let mightBeJson = false  // suppress streaming if AI is returning lead-capture JSON
+
+        // Read SSE stream from DeepSeek
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+
+          buf += dec.decode(value, { stream: true })
+          const lines = buf.split('\n')
+          buf = lines.pop() ?? ''
+
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue
+            const payload = line.slice(6).trim()
+            if (payload === '[DONE]') continue
+
+            try {
+              const parsed  = JSON.parse(payload)
+              const content = parsed.choices?.[0]?.delta?.content ?? ''
+              if (!content) continue
+
+              fullText += content
+
+              // Detect if AI is emitting JSON (lead capture) — don't stream raw JSON to user
+              if (fullText.length <= 5) mightBeJson = fullText.trimStart().startsWith('{')
+
+              if (!mightBeJson) emit({ t: 'token', c: content })
+            } catch { /* malformed SSE chunk */ }
+          }
+        }
+
+        // ── Post-stream processing ──────────────────────────────────────────
+
+        // Lead capture — AI returned only JSON
+        try {
+          const parsed = JSON.parse(fullText.trim())
+          if (parsed.action === 'capture_lead') {
+            await supabase.from('leads').insert({
+              line_id:   parsed.line_id,
+              car_model: parsed.car_model,
+              interest:  parsed.interest,
+              source:    'chatbot',
+            })
+            emit({ t: 'done', clean: 'บันทึก Line ID แล้วครับ! จะแจ้งเตือนทันทีที่มีสินค้าให้ครับบ', orderReady: false, needsImage: false, imageLine: false, imageKeys: [] })
+            return
+          }
+        } catch { /* not JSON */ }
+
+        // Parse flags
+        const { clean, needsImage, imageSku, imageLine, orderReady, demandNew, demandCorrect, demandAdd } = parseReply(fullText)
+
+        // Demand tracking
+        const demandRows = [
+          ...demandNew.map(car_model     => ({ car_model, type: 'new' })),
+          ...demandCorrect.map(car_model => ({ car_model, type: 'correction' })),
+          ...demandAdd.map(car_model     => ({ car_model, type: 'add' })),
+        ]
+        if (demandRows.length) await supabase.from('demand').insert(demandRows)
+
+        // Image keys
+        let imageKeys: string[] = []
+        if (needsImage && imageSku) {
+          const { data: product } = await supabase
+            .from('products')
+            .select('image_keys')
+            .eq('sku', imageSku)
+            .single()
+          imageKeys = product?.image_keys ?? []
+        }
+
+        emit({ t: 'done', clean, orderReady, needsImage, imageLine, imageKeys })
+
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        console.error('chat stream error:', msg)
+        emit({ t: 'error' })
+      } finally {
+        controller.close()
       }
-    } catch { /* not JSON */ }
+    },
+  })
 
-    const { clean, needsImage, imageSku, imageLine, orderReady, demandNew, demandCorrect, demandAdd } = parseReply(raw)
-
-    // Write demand flags to DB
-    const demandRows = [
-      ...demandNew.map(car_model     => ({ car_model, type: 'new' })),
-      ...demandCorrect.map(car_model => ({ car_model, type: 'correction' })),
-      ...demandAdd.map(car_model     => ({ car_model, type: 'add' })),
-    ]
-    if (demandRows.length) await supabase.from('demand').insert(demandRows)
-
-    // Fetch product images for IMAGE_NEEDED
-    let imageKeys: string[] = []
-    if (needsImage && imageSku) {
-      const { data: product } = await supabase
-        .from('products')
-        .select('image_keys')
-        .eq('sku', imageSku)
-        .single()
-      imageKeys = product?.image_keys ?? []
-    }
-
-    return new Response(
-      JSON.stringify({ reply: clean, needsImage, imageLine, imageKeys, orderReady }),
-      { headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } }
-    )
-
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    console.error('chat error:', msg)
-    return jsonError(500, 'Internal server error')
-  }
+  return new Response(stream, {
+    headers: {
+      ...CORS_HEADERS,
+      'Content-Type':  'text/event-stream',
+      'Cache-Control': 'no-cache',
+    },
+  })
 })

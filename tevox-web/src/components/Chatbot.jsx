@@ -107,6 +107,7 @@ function MessengerCTA({ url }) {
 }
 
 function ChatBubble({ msg, messengerUrl }) {
+  if (msg.streaming && !msg.content) return null
   return (
     <div className={`flex flex-col gap-2 ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
       <TextBubble msg={msg} messengerUrl={messengerUrl} />
@@ -226,35 +227,78 @@ export default function Chatbot({ isOpen, onClose }) {
     const text = input.trim()
     if (!text || loading) return
 
-    const userMsg = { role: 'user', content: text }
-    const history = [...messages, userMsg]
-    setMessages(history)
+    const userMsg   = { role: 'user', content: text }
+    const history   = [...messages, userMsg]
+    const streamMsg = { role: 'assistant', content: '', streaming: true }
+    setMessages([...history, streamMsg])
     setInput('')
     setLoading(true)
 
     try {
-      const { data, error } = await supabase.functions.invoke('chat', {
-        body: {
-          messages: history.map(m => ({ role: m.role, content: m.content })),
-        },
-      })
-      if (error) throw error
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`,
+        {
+          method:  'POST',
+          headers: {
+            'Content-Type':  'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            'apikey':        import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({
+            messages: history.map(m => ({ role: m.role, content: m.content })),
+          }),
+        }
+      )
 
-      const { reply, needsImage, imageLine, imageKeys, orderReady } = data
+      if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`)
 
-      setMessages(prev => [...prev, {
-        role:       'assistant',
-        content:    reply,
-        type:       needsImage && imageKeys?.length ? 'images' : 'text',
-        imageKeys:  needsImage ? imageKeys : undefined,
-        imageLine:  !!imageLine,
-        orderReady: !!orderReady,
-      }])
+      const reader  = res.body.getReader()
+      const decoder = new TextDecoder()
+      let buf = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buf += decoder.decode(value, { stream: true })
+        const lines = buf.split('\n')
+        buf = lines.pop() ?? ''
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue
+          try {
+            const event = JSON.parse(line.slice(6))
+
+            if (event.t === 'token') {
+              setMessages(prev => {
+                const last = prev[prev.length - 1]
+                return [...prev.slice(0, -1), { ...last, content: last.content + event.c }]
+              })
+            } else if (event.t === 'done') {
+              setMessages(prev => {
+                const last = prev[prev.length - 1]
+                return [...prev.slice(0, -1), {
+                  ...last,
+                  content:    event.clean,
+                  streaming:  false,
+                  type:       event.needsImage && event.imageKeys?.length ? 'images' : 'text',
+                  imageKeys:  event.needsImage ? event.imageKeys : undefined,
+                  imageLine:  !!event.imageLine,
+                  orderReady: !!event.orderReady,
+                }]
+              })
+            } else if (event.t === 'error') {
+              throw new Error('AI error')
+            }
+          } catch { /* malformed SSE line */ }
+        }
+      }
     } catch {
-      setMessages(prev => [...prev, {
-        role:    'assistant',
-        content: 'ขออภัยครับ เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง หรือติดต่อเราผ่าน Messenger โดยตรงครับ',
-      }])
+      setMessages(prev => {
+        const last = prev[prev.length - 1]
+        const errMsg = { role: 'assistant', content: 'ขออภัยครับ เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง หรือติดต่อเราผ่าน Messenger โดยตรงครับ' }
+        return last?.streaming ? [...prev.slice(0, -1), errMsg] : [...prev, errMsg]
+      })
     } finally {
       setLoading(false)
     }
@@ -342,7 +386,8 @@ export default function Chatbot({ isOpen, onClose }) {
           {messages.map((msg, i) => (
             <ChatBubble key={i} msg={msg} messengerUrl={settings.messenger_url} />
           ))}
-          {loading && <TypingIndicator />}
+          {/* Show typing indicator only before the first streaming token arrives */}
+          {loading && messages[messages.length - 1]?.content === '' && <TypingIndicator />}
           <div ref={bottomRef} />
         </div>
 
