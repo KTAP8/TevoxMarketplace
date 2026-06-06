@@ -195,14 +195,26 @@ export default function ProductDetail() {
             )}
 
             {/* CTA */}
-            <div className="flex gap-3 pt-2">
+            <div className="flex flex-col gap-3 pt-2">
+              {product.status !== 'coming_soon' && product.status !== 'sold_out' && (
+                <Link to={`/order/${product.id}`} className="w-full">
+                  <Button variant="primary" size="lg" className="w-full">
+                    {product.deposit_thb
+                      ? `วางมัดจำ ฿${Number(product.deposit_thb).toLocaleString('th-TH')}`
+                      : `สั่งซื้อ ฿${Number(product.price_thb).toLocaleString('th-TH')}`}
+                  </Button>
+                </Link>
+              )}
               {product.status !== 'coming_soon' && product.status !== 'sold_out' && settings.messenger_url && (
-                <a href={settings.messenger_url} target="_blank" rel="noopener noreferrer" className="flex-1">
-                  <Button variant="primary" size="lg" className="w-full">สั่งซื้อผ่าน Messenger</Button>
+                <a href={settings.messenger_url} target="_blank" rel="noopener noreferrer" className="w-full">
+                  <Button variant="secondary" size="lg" className="w-full">สอบถามผ่าน Messenger</Button>
                 </a>
               )}
               {product.status === 'coming_soon' && (
-                <Button variant="secondary" size="lg" className="flex-1" disabled>เร็วๆ นี้</Button>
+                <Button variant="secondary" size="lg" className="w-full" disabled>เร็วๆ นี้</Button>
+              )}
+              {product.status === 'sold_out' && (
+                <Button variant="secondary" size="lg" className="w-full" disabled>หมดแล้ว</Button>
               )}
             </div>
           </div>
