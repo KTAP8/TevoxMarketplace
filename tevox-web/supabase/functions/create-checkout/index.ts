@@ -1,10 +1,16 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import Stripe from 'npm:stripe@14'
 
-const CORS = {
-  'Access-Control-Allow-Origin':  '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, content-type, x-client-info, apikey',
+// Fix F4: restrict to known origins instead of wildcard
+function corsHeaders(req: Request): Record<string, string> {
+  const origin  = req.headers.get('Origin') ?? ''
+  const siteUrl = Deno.env.get('SITE_URL') || ''
+  const allowed = new Set([siteUrl, 'http://localhost:5173', 'http://localhost:5174'].filter(Boolean))
+  return {
+    'Access-Control-Allow-Origin':  allowed.has(origin) ? origin : (siteUrl || 'http://localhost:5173'),
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'authorization, content-type, x-client-info, apikey',
+  }
 }
 
 const supabase = createClient(
@@ -19,15 +25,17 @@ function getStripe() {
   return new Stripe(key, { apiVersion: '2024-06-20' })
 }
 
-function jsonError(status: number, msg: string) {
-  return new Response(JSON.stringify({ error: msg }), {
-    status,
-    headers: { ...CORS, 'Content-Type': 'application/json' },
-  })
-}
-
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response(null, { headers: CORS })
+  const cors = corsHeaders(req)
+
+  function jsonError(status: number, msg: string) {
+    return new Response(JSON.stringify({ error: msg }), {
+      status,
+      headers: { ...cors, 'Content-Type': 'application/json' },
+    })
+  }
+
+  if (req.method === 'OPTIONS') return new Response(null, { headers: cors })
   if (req.method !== 'POST')   return jsonError(405, 'Method not allowed')
 
   let body: Record<string, unknown>
@@ -101,6 +109,6 @@ Deno.serve(async (req) => {
   }
 
   return new Response(JSON.stringify({ url: session.url }), {
-    headers: { ...CORS, 'Content-Type': 'application/json' },
+    headers: { ...cors, 'Content-Type': 'application/json' },
   })
 })

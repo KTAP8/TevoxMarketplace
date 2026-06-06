@@ -10,6 +10,16 @@ const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, {
   apiVersion: '2024-06-20',
 })
 
+// Fix F3: escape all user-supplied strings before putting them in HTML
+function esc(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;')
+}
+
 Deno.serve(async (req) => {
   if (req.method !== 'POST') return new Response('Method not allowed', { status: 405 })
 
@@ -39,28 +49,49 @@ Deno.serve(async (req) => {
       ? (() => { try { return JSON.parse(meta.shipping_json) } catch { return null } })()
       : null
 
-    const { error: insertError } = await supabase.from('orders').insert({
-      stripe_session_id:         session.id,
-      stripe_payment_intent_id:  typeof session.payment_intent === 'string'
-                                   ? session.payment_intent
-                                   : (session.payment_intent as any)?.id ?? null,
-      product_id:      meta.product_id    || null,
-      product_sku:     meta.product_sku   ?? '',
-      product_name_th: meta.product_name_th ?? '',
-      customer_name:   meta.customer_name  ?? '',
-      customer_email:  meta.customer_email ?? '',
-      customer_phone:  meta.customer_phone  || null,
-      wants_shipping:  meta.wants_shipping === 'true',
-      shipping_address: shippingAddress,
-      deposit_paid:    (session.amount_total ?? 0) / 100,
-      total_price:     Number(meta.total_price ?? 0),
-      status:          'deposit_paid',
-    })
+    // Fix F5: re-fetch authoritative price from DB instead of trusting metadata
+    let totalPrice = Number(meta.total_price ?? 0)
+    if (meta.product_id) {
+      const { data: product } = await supabase
+        .from('products')
+        .select('price_thb')
+        .eq('id', meta.product_id)
+        .single()
+      if (product?.price_thb) totalPrice = Number(product.price_thb)
+    }
+
+    // Fix F2: upsert with ignoreDuplicates so Stripe retries never create double orders.
+    // Requires UNIQUE constraint on orders.stripe_session_id (see SQL below).
+    // Returns the inserted row only when it's genuinely new.
+    const { data: inserted, error: insertError } = await supabase
+      .from('orders')
+      .upsert(
+        {
+          stripe_session_id:         session.id,
+          stripe_payment_intent_id:  typeof session.payment_intent === 'string'
+                                       ? session.payment_intent
+                                       : (session.payment_intent as any)?.id ?? null,
+          product_id:      meta.product_id    || null,
+          product_sku:     meta.product_sku   ?? '',
+          product_name_th: meta.product_name_th ?? '',
+          customer_name:   meta.customer_name  ?? '',
+          customer_email:  meta.customer_email ?? '',
+          customer_phone:  meta.customer_phone  || null,
+          wants_shipping:  meta.wants_shipping === 'true',
+          shipping_address: shippingAddress,
+          deposit_paid:    (session.amount_total ?? 0) / 100,
+          total_price:     totalPrice,
+          status:          'deposit_paid',
+        },
+        { onConflict: 'stripe_session_id', ignoreDuplicates: true },
+      )
+      .select('id')
 
     if (insertError) {
-      console.error('Order insert failed:', insertError.message)
-    } else {
-      await sendConfirmationEmail(meta, (session.amount_total ?? 0) / 100, shippingAddress)
+      console.error('Order upsert failed:', insertError.message)
+    } else if (inserted && inserted.length > 0) {
+      // Fix F2: only send email for new inserts, not retried duplicate events
+      await sendConfirmationEmail(meta, (session.amount_total ?? 0) / 100, totalPrice, shippingAddress)
     }
   }
 
@@ -72,17 +103,22 @@ Deno.serve(async (req) => {
 async function sendConfirmationEmail(
   meta: Record<string, string>,
   depositPaid: number,
+  totalPrice: number,
   shippingAddress: Record<string, string> | null,
 ) {
-  const totalPrice = Number(meta.total_price ?? 0)
-  const remaining  = totalPrice - depositPaid
+  const remaining = totalPrice - depositPaid
+
+  // Fix F3: all user-supplied values are escaped before HTML interpolation
+  const customerName  = esc(meta.customer_name  ?? '')
+  const productName   = esc(meta.product_name_th ?? '')
+  const productSku    = esc(meta.product_sku     ?? '')
 
   const shippingRow = shippingAddress
     ? `
       <tr><td colspan="2" style="padding:12px 0 4px;border-top:1px solid #e4e4e7;font-weight:bold;font-size:13px;">ที่อยู่จัดส่ง</td></tr>
-      <tr><td colspan="2" style="padding:2px 0;color:#52525b;font-size:14px;">${shippingAddress.name ?? ''}</td></tr>
-      <tr><td colspan="2" style="padding:2px 0;color:#52525b;font-size:14px;">${shippingAddress.address_line1 ?? ''}${shippingAddress.address_line2 ? ', ' + shippingAddress.address_line2 : ''}</td></tr>
-      <tr><td colspan="2" style="padding:2px 0;color:#52525b;font-size:14px;">${shippingAddress.district ?? ''}, ${shippingAddress.province ?? ''} ${shippingAddress.postal_code ?? ''}</td></tr>
+      <tr><td colspan="2" style="padding:2px 0;color:#52525b;font-size:14px;">${esc(shippingAddress.name ?? '')}</td></tr>
+      <tr><td colspan="2" style="padding:2px 0;color:#52525b;font-size:14px;">${esc(shippingAddress.address_line1 ?? '')}${shippingAddress.address_line2 ? ', ' + esc(shippingAddress.address_line2) : ''}</td></tr>
+      <tr><td colspan="2" style="padding:2px 0;color:#52525b;font-size:14px;">${esc(shippingAddress.district ?? '')}, ${esc(shippingAddress.province ?? '')} ${esc(shippingAddress.postal_code ?? '')}</td></tr>
     `
     : `<tr><td colspan="2" style="padding:12px 0 4px;border-top:1px solid #e4e4e7;color:#52525b;font-size:14px;">รับสินค้า / ติดตั้งที่ร้าน (บางกระดี่)</td></tr>`
 
@@ -98,7 +134,7 @@ async function sendConfirmationEmail(
   </td></tr>
 
   <tr><td style="padding:32px 32px 0;">
-    <p style="margin:0 0 8px;font-size:16px;color:#1D1C1D;">สวัสดีครับ คุณ${meta.customer_name ?? ''},</p>
+    <p style="margin:0 0 8px;font-size:16px;color:#1D1C1D;">สวัสดีครับ คุณ${customerName},</p>
     <p style="margin:0;font-size:15px;color:#52525b;line-height:1.6;">
       ได้รับการวางมัดจำเรียบร้อยแล้วครับ ขอบคุณที่ไว้วางใจ Tevox Automotive ครับ
     </p>
@@ -107,8 +143,8 @@ async function sendConfirmationEmail(
   <tr><td style="padding:24px 32px;">
     <table width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;border-collapse:collapse;">
       <tr style="background:#f4f4f5;"><td colspan="2" style="padding:10px 12px;font-weight:bold;font-size:12px;letter-spacing:1px;color:#3f3f46;">รายละเอียดคำสั่งซื้อ</td></tr>
-      <tr><td style="padding:8px 12px;color:#52525b;">สินค้า</td><td style="padding:8px 12px;font-weight:bold;color:#1D1C1D;">${meta.product_name_th ?? ''}</td></tr>
-      <tr style="background:#fafafa;"><td style="padding:8px 12px;color:#52525b;">SKU</td><td style="padding:8px 12px;font-family:monospace;color:#3f3f46;">${meta.product_sku ?? ''}</td></tr>
+      <tr><td style="padding:8px 12px;color:#52525b;">สินค้า</td><td style="padding:8px 12px;font-weight:bold;color:#1D1C1D;">${productName}</td></tr>
+      <tr style="background:#fafafa;"><td style="padding:8px 12px;color:#52525b;">SKU</td><td style="padding:8px 12px;font-family:monospace;color:#3f3f46;">${productSku}</td></tr>
       <tr><td style="padding:8px 12px;color:#52525b;">ราคาเต็ม</td><td style="padding:8px 12px;color:#1D1C1D;">฿${totalPrice.toLocaleString('th-TH')}</td></tr>
       <tr style="background:#fafafa;"><td style="padding:8px 12px;color:#52525b;">มัดจำที่ชำระแล้ว</td><td style="padding:8px 12px;font-weight:bold;color:#16a34a;">฿${depositPaid.toLocaleString('th-TH')}</td></tr>
       <tr><td style="padding:8px 12px;color:#52525b;">ยอดค้างชำระ (ที่ร้าน)</td><td style="padding:8px 12px;color:#1D1C1D;">฿${remaining.toLocaleString('th-TH')}</td></tr>
@@ -148,7 +184,7 @@ async function sendConfirmationEmail(
     body: JSON.stringify({
       from:    'Tevox Automotive <orders@pimsuea.com>',
       to:      [meta.customer_email],
-      subject: `ยืนยันการวางมัดจำ — ${meta.product_name_th}`,
+      subject: `ยืนยันการวางมัดจำ — ${productName}`,
       html,
     }),
   })

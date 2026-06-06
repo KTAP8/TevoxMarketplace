@@ -9,8 +9,9 @@ export default function OrderSuccess() {
 
   useEffect(() => {
     if (!sessionId) { setLoading(false); return }
+    const email = sessionStorage.getItem('checkout_email') ?? ''
     fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-order?session_id=${sessionId}`,
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-order?session_id=${sessionId}&email=${encodeURIComponent(email)}`,
       {
         headers: {
           'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,

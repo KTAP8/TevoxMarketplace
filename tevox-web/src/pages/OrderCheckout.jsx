@@ -81,6 +81,8 @@ export default function OrderCheckout() {
 
       const json = await res.json()
       if (json.error) throw new Error(json.error)
+      // Persist email so OrderSuccess can pass it to get-order for ownership check
+      sessionStorage.setItem('checkout_email', form.email.trim().toLowerCase())
       window.location.href = json.url
     } catch (err) {
       setError(err.message)
