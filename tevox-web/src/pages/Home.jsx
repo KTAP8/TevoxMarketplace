@@ -137,6 +137,39 @@ function SectionLabel({ index, label }) {
   )
 }
 
+// Tech Count Up animation helper
+function CountUp({ end, duration = 1200 }) {
+  const [count, setCount] = useState(0)
+
+  useEffect(() => {
+    if (!end || end === 0) return
+    let startTime = null
+    let frameId = null
+
+    const step = (timestamp) => {
+      if (!startTime) startTime = timestamp
+      const progress = timestamp - startTime
+      const progressRatio = Math.min(progress / duration, 1)
+      
+      // Easing: easeOutQuad
+      const easedRatio = progressRatio * (2 - progressRatio)
+      setCount(Math.floor(easedRatio * end))
+
+      if (progress < duration) {
+        frameId = requestAnimationFrame(step)
+      }
+    }
+
+    frameId = requestAnimationFrame(step)
+
+    return () => {
+      if (frameId) cancelAnimationFrame(frameId)
+    }
+  }, [end, duration])
+
+  return <>{count}</>
+}
+
 export default function Home({ onChatOpen }) {
   const [waitlistOpen, setWaitlistOpen] = useState(false)
   const stats = useStats()
@@ -148,6 +181,32 @@ export default function Home({ onChatOpen }) {
     ...[...new Set(products.map(p => p.car_model))].slice(0, 3),
     ...[...new Set(products.map(p => p.category))].slice(0, 2),
   ].slice(0, 5)
+
+  // Trigger intersection observer for scroll reveal animations
+  useEffect(() => {
+    const observerOptions = {
+      root: null,
+      rootMargin: '0px 0px -8% 0px',
+      threshold: 0.05
+    }
+
+    const observerCallback = (entries, observer) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('reveal-visible')
+          observer.unobserve(entry.target) // stop observing once visible
+        }
+      })
+    }
+
+    const observer = new IntersectionObserver(observerCallback, observerOptions)
+    const targets = document.querySelectorAll('.reveal')
+    targets.forEach(t => observer.observe(t))
+
+    return () => {
+      observer.disconnect()
+    }
+  }, [products, installs])
 
   return (
     <div className="flex flex-col">
@@ -162,9 +221,13 @@ export default function Home({ onChatOpen }) {
           aria-hidden="true"
           className="absolute inset-0 w-full h-full object-cover object-center opacity-30 pointer-events-none select-none mix-blend-luminosity scale-105 animate-[pulse_10s_ease-in-out_infinite]"
         />
+        
         {/* Gradient overlays */}
         <div className="absolute inset-0 bg-gradient-to-b from-brand-dark/80 via-brand-dark/50 to-brand-dark pointer-events-none" />
         <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-brand-yellow/15 rounded-full blur-[140px] pointer-events-none opacity-50" />
+
+        {/* Tech Animations overlays */}
+        <div className="absolute inset-0 tech-grid-pulse pointer-events-none z-10" />
 
         {/* Content */}
         <div className="relative z-30 flex flex-col items-center justify-center flex-1 px-6 py-20 mt-12 text-center">
@@ -223,7 +286,9 @@ export default function Home({ onChatOpen }) {
               { value: stats.installs, label: 'ติดตั้งแล้ว' },
             ].map(({ value, label }) => (
               <div key={label} className="flex flex-col items-center gap-2 px-4 group">
-                <span className="font-mono font-black text-h2 text-brand-yellow tabular-nums group-hover:scale-110 transition-transform duration-300 drop-shadow-md">{value}</span>
+                <span className="font-mono font-black text-h2 text-brand-yellow tabular-nums group-hover:scale-110 transition-transform duration-300 drop-shadow-md">
+                  <CountUp end={value} />
+                </span>
                 <span className="font-mono text-micro text-zinc-400 uppercase tracking-[0.15em] group-hover:text-zinc-300 transition-colors">{label}</span>
               </div>
             ))}
@@ -234,7 +299,7 @@ export default function Home({ onChatOpen }) {
       {/* ── Featured products (light) ── */}
       <section className="bg-zinc-50 border-b border-zinc-200">
         <div className="max-w-7xl mx-auto px-6 py-20">
-          <div className="flex items-end justify-between mb-8">
+          <div className="flex items-end justify-between mb-8 reveal">
             <div>
               <SectionLabel index={1} label="FEATURED" />
               <h2 className="text-h2 font-black text-brand-dark">สินค้าแนะนำ</h2>
@@ -246,8 +311,8 @@ export default function Home({ onChatOpen }) {
 
           {featured.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px bg-zinc-200">
-              {featured.map(p => (
-                <div key={p.id} className="bg-zinc-50">
+              {featured.map((p, idx) => (
+                <div key={p.id} className={`bg-zinc-50 reveal reveal-delay-${idx + 1}`}>
                   <ProductCard product={p} />
                 </div>
               ))}
@@ -263,7 +328,7 @@ export default function Home({ onChatOpen }) {
       {/* ── Community gallery (light, editorial) ── */}
       <section className="bg-white border-b border-zinc-200">
         <div className="max-w-7xl mx-auto px-6 py-20">
-          <div className="flex items-end justify-between mb-8">
+          <div className="flex items-end justify-between mb-8 reveal">
             <div>
               <SectionLabel index={2} label="COMMUNITY BUILDS" />
               <h2 className="text-h2 font-black text-brand-dark">รูปจากลูกค้าจริง</h2>
@@ -275,8 +340,11 @@ export default function Home({ onChatOpen }) {
 
           {installs.length > 0 ? (
             <div className="columns-2 md:columns-3 gap-3 space-y-3">
-              {installs.map(install => (
-                <div key={install.id} className="break-inside-avoid group relative overflow-hidden mb-3 border border-zinc-100 hover:border-zinc-300 transition-colors">
+              {installs.map((install, idx) => (
+                <div
+                  key={install.id}
+                  className={`break-inside-avoid group relative overflow-hidden mb-3 border border-zinc-100 hover:border-zinc-300 transition-colors reveal reveal-delay-${(idx % 3) + 1}`}
+                >
                   <img
                     src={r2Url(install.image_key)}
                     alt={install.caption_th}
@@ -301,7 +369,7 @@ export default function Home({ onChatOpen }) {
 
       {/* ── AI CTA (light) ── */}
       <section className="bg-zinc-50 border-b border-zinc-200">
-        <div className="max-w-7xl mx-auto px-6 py-16 flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
+        <div className="max-w-7xl mx-auto px-6 py-16 flex flex-col md:flex-row items-start md:items-center justify-between gap-8 reveal">
           <div className="flex flex-col gap-3">
             <SectionLabel index={3} label="AI ASSIST" />
             <h2 className="text-h2 font-black text-brand-dark max-w-lg">
@@ -311,7 +379,7 @@ export default function Home({ onChatOpen }) {
               คุยกับ AI ของเราได้เลย ช่วยเช็คความเข้ากัน และหาชิ้นส่วนที่ใช่
             </p>
           </div>
-          <Button variant="primary" size="lg" onClick={onChatOpen} className="shrink-0">
+          <Button variant="primary" size="lg" onClick={onChatOpen} className="shrink-0 shadow-[0_0_15px_rgba(233,255,34,0.1)] hover:shadow-[0_0_25px_rgba(233,255,34,0.3)] transition-all">
             คุยกับเรา
           </Button>
         </div>

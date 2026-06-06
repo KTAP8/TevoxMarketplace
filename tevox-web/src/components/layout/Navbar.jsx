@@ -3,9 +3,10 @@ import { Link, NavLink } from 'react-router-dom'
 import tevoxLogo from '../../assets/Tevox_Horizontal_Logo.png'
 
 const navLinks = [
-  { to: '/products', label: 'สินค้า' },
-  { to: '/gallery',  label: 'แกลเลอรี่' },
-  { to: '/about',    label: 'เกี่ยวกับเรา' },
+  { to: '/products',    label: 'สินค้า' },
+  { to: '/gallery',     label: 'แกลเลอรี่' },
+  { to: '/how-it-works', label: 'วิธีสั่งซื้อ' },
+  { to: '/about',       label: 'เกี่ยวกับเรา' },
 ]
 
 function ChatIcon() {

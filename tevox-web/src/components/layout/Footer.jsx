@@ -2,9 +2,11 @@ import { Link } from 'react-router-dom'
 import { useSettings } from '../../hooks/useSettings'
 
 const siteLinks = [
-  { to: '/products', label: 'สินค้า' },
-  { to: '/gallery',  label: 'แกลเลอรี่' },
-  { to: '/about',    label: 'เกี่ยวกับเรา' },
+  { to: '/products',     label: 'สินค้า' },
+  { to: '/gallery',      label: 'แกลเลอรี่' },
+  { to: '/how-it-works', label: 'วิธีสั่งซื้อ' },
+  { to: '/faq',          label: 'คำถามที่พบบ่อย' },
+  { to: '/about',        label: 'เกี่ยวกับเรา' },
 ]
 
 function TikTokIcon() {
