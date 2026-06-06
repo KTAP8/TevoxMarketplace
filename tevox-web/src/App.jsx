@@ -11,6 +11,8 @@ import About from './pages/About'
 import OrderCheckout from './pages/OrderCheckout'
 import OrderSuccess from './pages/OrderSuccess'
 import OrderCancel from './pages/OrderCancel'
+import FAQ from './pages/FAQ'
+import HowItWorks from './pages/HowItWorks'
 
 export default function App() {
   const [chatOpen, setChatOpen] = useState(false)
@@ -31,6 +33,8 @@ export default function App() {
             <Route path="/order/:productId"  element={<OrderCheckout />} />
             <Route path="/order/success"     element={<OrderSuccess />} />
             <Route path="/order/cancel"      element={<OrderCancel />} />
+            <Route path="/faq"               element={<FAQ />} />
+            <Route path="/how-it-works"      element={<HowItWorks />} />
           </Routes>
         </main>
         <Footer />
